@@ -1,14 +1,14 @@
 import dotenv from 'dotenv';
 import app from './app';
 import logger from './utils/logger';
-import { testConnection } from './config/database';
+import { initializeDatabase } from './database/connection';
 
 // Load environment variables
 dotenv.config();
 
-// Test database connection on startup
-testConnection().catch((error) => {
-  logger.error('Failed to connect to database:', error);
+// Initialize database connection and lookup cache on startup
+initializeDatabase().catch((error) => {
+  logger.error('Failed to initialize database:', error);
   process.exit(1);
 });
 
