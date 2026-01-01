@@ -1,0 +1,154 @@
+import { Request, Response } from 'express';
+import * as UserModel from '../models/user.model';
+import { successResponse } from '../utils/response';
+import { asyncHandler } from '../middleware/error.middleware';
+import { ValidationError, ForbiddenError } from '../utils/errors';
+
+/**
+ * Admin Controller - Handle administrative operations
+ */
+
+/**
+ * Get all users
+ * GET /api/admin/users
+ */
+export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    throw new ForbiddenError('Admin access required');
+  }
+
+  const users = await UserModel.findAll();
+  const usersResponse = users.map(UserModel.toUserResponse);
+
+  return successResponse(res, 'Users retrieved successfully', usersResponse);
+});
+
+/**
+ * Get user by ID
+ * GET /api/admin/users/:id
+ */
+export const getUserById = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    throw new ForbiddenError('Admin access required');
+  }
+
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    throw new ValidationError('Invalid user ID');
+  }
+
+  const user = await UserModel.findById(userId);
+
+  if (!user) {
+    throw new ValidationError('User not found');
+  }
+
+  const userResponse = UserModel.toUserResponse(user);
+
+  return successResponse(res, 'User retrieved successfully', userResponse);
+});
+
+/**
+ * Toggle user active status
+ * PATCH /api/admin/users/:id/toggle-status
+ */
+export const toggleUserStatus = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    throw new ForbiddenError('Admin access required');
+  }
+
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    throw new ValidationError('Invalid user ID');
+  }
+
+  const updatedUser = await UserModel.toggleActiveStatus(userId);
+  const userResponse = UserModel.toUserResponse(updatedUser);
+
+  return successResponse(
+    res,
+    `User ${userResponse.is_active ? 'activated' : 'deactivated'} successfully`,
+    userResponse
+  );
+});
+
+/**
+ * Get system statistics
+ * GET /api/admin/stats
+ */
+export const getSystemStats = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    throw new ForbiddenError('Admin access required');
+  }
+
+  // Get user statistics
+  const totalUsersResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM users'
+  );
+  const activeUsersResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM users WHERE is_active = 1'
+  );
+
+  // Get order statistics
+  const totalOrdersResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM orders'
+  );
+  const pendingOrdersResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM orders WHERE status = "IN_PROGRESS"'
+  );
+  const completedOrdersResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM orders WHERE status = "COMPLETED"'
+  );
+
+  // Get quote statistics
+  const totalQuotesResult: any = await UserModel.query(
+    'SELECT COUNT(*) as count FROM quotes'
+  );
+  const pendingQuotesResult: any = await UserModel.query(
+    `SELECT COUNT(*) as count FROM quotes q
+     LEFT JOIN lookups l ON q.status_id = l.id
+     WHERE l.lookup_value = 'PENDING'`
+  );
+  const pricedQuotesResult: any = await UserModel.query(
+    `SELECT COUNT(*) as count FROM quotes q
+     LEFT JOIN lookups l ON q.status_id = l.id
+     WHERE l.lookup_value = 'PRICED'`
+  );
+
+  const stats = {
+    users: {
+      total: totalUsersResult[0].count,
+      active: activeUsersResult[0].count,
+    },
+    orders: {
+      total: totalOrdersResult[0].count,
+      pending: pendingOrdersResult[0].count,
+      completed: completedOrdersResult[0].count,
+    },
+    quotes: {
+      total: totalQuotesResult[0].count,
+      pending: pendingQuotesResult[0].count,
+      priced: pricedQuotesResult[0].count,
+    },
+  };
+
+  return successResponse(res, 'System statistics retrieved successfully', stats);
+});

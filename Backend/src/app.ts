@@ -9,10 +9,10 @@ import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.routes';
 import lookupRoutes from './routes/lookup.routes';
 import orderRoutes from './routes/order.routes';
+import quoteRoutes from './routes/quote.routes';
+import adminRoutes from './routes/admin.routes';
+import fileRoutes from './routes/file.routes';
 // import userRoutes from './routes/user.routes';
-// import quoteRoutes from './routes/quote.routes';
-// import fileRoutes from './routes/file.routes';
-// import adminRoutes from './routes/admin.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
@@ -60,10 +60,10 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/lookups', lookupRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/quotes', quoteRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/files', fileRoutes);
 // app.use('/api/user', userRoutes);
-// app.use('/api/quotes', quoteRoutes);
-// app.use('/api/files', fileRoutes);
-// app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use('*', notFoundHandler);
