@@ -1,5 +1,25 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../Utils/Constants';
+import { toast } from 'react-toastify';
+import { API_BASE_URL } from '../utils/Constants';
+
+// Axios interceptor for handling 401 errors (token expiry)
+axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response?.status === 401) {
+            // Token expired or invalid
+            localStorage.removeItem('tp_portal_token');
+            localStorage.removeItem('persist:root-v3');
+
+            // Only redirect and show toast if not already on login page
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login';
+                toast.error('Session expired. Please login again.');
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export enum HttpMethod {
     GET = 'get',

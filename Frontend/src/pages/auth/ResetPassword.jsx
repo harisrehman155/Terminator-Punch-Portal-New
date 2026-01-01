@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Card, CardContent, TextField, Button, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { resetPasswordUser } from '../../redux/actions/AuthAction';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const { loading } = useSelector(state => state.auth);
+  const resetToken = location.state?.resetToken;
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    if (!resetToken) {
+      toast.error('Invalid reset token. Please restart password reset.');
+      navigate('/forgot-password');
+    }
+  }, [resetToken, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -17,8 +30,9 @@ const ResetPassword = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!formData.password || !formData.confirmPassword) {
       toast.error('Please fill in all fields');
       return;
@@ -29,8 +43,19 @@ const ResetPassword = () => {
       return;
     }
 
-    toast.success('Password reset successfully');
-    navigate('/login');
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    const result = await dispatch(resetPasswordUser(resetToken, formData.password));
+
+    if (result.success) {
+      toast.success('Password reset successfully! Please login with your new password.');
+      navigate('/login');
+    } else {
+      toast.error(result.message || 'Failed to reset password');
+    }
   };
 
   return (
@@ -77,9 +102,10 @@ const ResetPassword = () => {
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 2, mb: 2, py: 1.5 }}
             >
-              Reset Password
+              {loading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
           </Box>
         </CardContent>
