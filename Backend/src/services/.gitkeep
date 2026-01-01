@@ -1,0 +1,6 @@
+# Business logic services will go here
+# - auth.service.ts
+# - email.service.ts
+# - order.service.ts
+# - quote.service.ts
+# - file.service.ts

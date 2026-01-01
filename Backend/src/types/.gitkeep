@@ -1,0 +1,5 @@
+# TypeScript type definitions will go here
+# - express.d.ts (Express type extensions)
+# - user.types.ts
+# - order.types.ts
+# - quote.types.ts

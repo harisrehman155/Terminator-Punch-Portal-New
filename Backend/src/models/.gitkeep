@@ -1,0 +1,6 @@
+# Database models will go here
+# - user.model.ts
+# - order.model.ts
+# - quote.model.ts
+# - file.model.ts
+# - lookup.model.ts

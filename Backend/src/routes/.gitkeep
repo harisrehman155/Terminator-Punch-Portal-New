@@ -1,0 +1,8 @@
+# API routes will go here
+# - auth.routes.ts
+# - user.routes.ts
+# - order.routes.ts
+# - quote.routes.ts
+# - file.routes.ts
+# - lookup.routes.ts
+# - admin.routes.ts

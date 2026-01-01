@@ -1,0 +1,6 @@
+# Middleware will go here
+# - auth.middleware.ts (JWT verification)
+# - role.middleware.ts (Role-based access control)
+# - validate.middleware.ts (Request validation)
+# - upload.middleware.ts (File upload handling)
+# - error.middleware.ts (Global error handler)
