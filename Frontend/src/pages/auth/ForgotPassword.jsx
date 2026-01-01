@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { Box, Card, CardContent, TextField, Button, Typography, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { forgotPasswordUser } from '../../redux/actions/AuthAction';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { loading } = useSelector(state => state.auth);
   const [email, setEmail] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!email) {
       toast.error('Please enter your email');
       return;
     }
 
-    toast.success('OTP sent to your email');
-    navigate('/verify-otp');
+    const result = await dispatch(forgotPasswordUser(email));
+
+    if (result.success) {
+      toast.success('OTP sent to your email');
+      navigate('/verify-otp', { state: { email } });
+    } else {
+      toast.error(result.message || 'Failed to send OTP');
+    }
   };
 
   return (
@@ -53,9 +64,10 @@ const ForgotPassword = () => {
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 2, mb: 2, py: 1.5 }}
             >
-              Send OTP
+              {loading ? 'Sending OTP...' : 'Send OTP'}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>

@@ -1,15 +1,31 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, TextField, Button, Typography, FormControlLabel, Switch, Link } from '@mui/material';
+import { Box, Card, CardContent, TextField, Button, Typography, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { loginUser } from '../../redux/actions/AuthAction';
+import { useEffect } from 'react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { loading, isAuthenticated, user } = useSelector(state => state.auth);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    role: 'USER',
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  // Handle redirection when auth state changes
+  useEffect(() => {
+    if (shouldRedirect && isAuthenticated && user) {
+      console.log('Redirecting after auth state update, user role:', user.role);
+      const redirectPath = user.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard';
+      navigate(redirectPath, { replace: true });
+      setShouldRedirect(false);
+    }
+  }, [shouldRedirect, isAuthenticated, user, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -18,28 +34,35 @@ const Login = () => {
     });
   };
 
-  const handleRoleToggle = (e) => {
-    setFormData({
-      ...formData,
-      role: e.target.checked ? 'ADMIN' : 'USER',
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormErrors({});
+
     if (!formData.email || !formData.password) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    localStorage.setItem('role', formData.role);
-    localStorage.setItem('token', 'dummy-token');
-    toast.success('Login successful');
-    
-    if (formData.role === 'ADMIN') {
-      navigate('/admin/dashboard');
+    const result = await dispatch(loginUser(formData.email, formData.password));
+
+    if (result.success) {
+      console.log('Login successful, result:', result);
+      console.log('User data:', result.data.user);
+      toast.success('Login successful');
+
+      // Redirect immediately based on user role from API response
+      const userRole = result.data.user.role;
+      console.log('User role:', userRole);
+      const redirectPath = userRole === 'ADMIN' ? '/admin/dashboard' : '/dashboard';
+      console.log('Redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
     } else {
-      navigate('/dashboard');
+      console.log('Login failed, result:', result);
+      if (result.errors) {
+        setFormErrors(result.errors);
+      } else {
+        toast.error(result.message || 'Login failed');
+      }
     }
   };
 
@@ -70,6 +93,8 @@ const Login = () => {
               onChange={handleChange}
               margin="normal"
               required
+              error={!!formErrors.email}
+              helperText={formErrors.email}
             />
 
             <TextField
@@ -81,27 +106,18 @@ const Login = () => {
               onChange={handleChange}
               margin="normal"
               required
-            />
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.role === 'ADMIN'}
-                  onChange={handleRoleToggle}
-                  color="primary"
-                />
-              }
-              label="Login as Admin"
-              sx={{ mt: 2, mb: 2 }}
+              error={!!formErrors.password}
+              helperText={formErrors.password}
             />
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 2, mb: 2, py: 1.5 }}
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>

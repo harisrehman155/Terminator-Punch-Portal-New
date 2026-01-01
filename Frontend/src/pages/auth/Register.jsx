@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { Box, Card, CardContent, TextField, Button, Typography, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { signupUser } from '../../redux/actions/AuthAction';
 
 const Register = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { loading } = useSelector(state => state.auth);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
   });
+  const [formErrors, setFormErrors] = useState({});
 
   const handleChange = (e) => {
     setFormData({
@@ -19,8 +24,10 @@ const Register = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormErrors({});
+
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast.error('Please fill in all fields');
       return;
@@ -31,10 +38,29 @@ const Register = () => {
       return;
     }
 
-    localStorage.setItem('role', 'USER');
-    localStorage.setItem('token', 'dummy-token');
-    toast.success('Registration successful');
-    navigate('/dashboard');
+    // Password strength validation
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    const result = await dispatch(signupUser(
+      formData.name,
+      formData.email,
+      formData.password,
+      formData.confirmPassword
+    ));
+
+    if (result.success) {
+      toast.success('Registration successful! Please login to continue.');
+      navigate('/login');
+    } else {
+      if (result.errors) {
+        setFormErrors(result.errors);
+      } else {
+        toast.error(result.message || 'Registration failed');
+      }
+    }
   };
 
   return (
@@ -63,6 +89,8 @@ const Register = () => {
               onChange={handleChange}
               margin="normal"
               required
+              error={!!formErrors.name}
+              helperText={formErrors.name}
             />
 
             <TextField
@@ -74,6 +102,8 @@ const Register = () => {
               onChange={handleChange}
               margin="normal"
               required
+              error={!!formErrors.email}
+              helperText={formErrors.email}
             />
 
             <TextField
@@ -85,6 +115,8 @@ const Register = () => {
               onChange={handleChange}
               margin="normal"
               required
+              error={!!formErrors.password}
+              helperText={formErrors.password}
             />
 
             <TextField
@@ -96,15 +128,18 @@ const Register = () => {
               onChange={handleChange}
               margin="normal"
               required
+              error={!!formErrors.confirmPassword}
+              helperText={formErrors.confirmPassword}
             />
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 2, mb: 2, py: 1.5 }}
             >
-              Register
+              {loading ? 'Registering...' : 'Register'}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>

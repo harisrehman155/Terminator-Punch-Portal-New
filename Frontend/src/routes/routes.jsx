@@ -1,5 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import AppLayout from '../components/layout/AppLayout';
+import { TOKEN_KEY, USER_KEY } from '../utils/Constants';
 
 // Auth Pages
 import Login from '../pages/auth/Login';
@@ -31,19 +33,47 @@ import AdminUsers from '../pages/admin/AdminUsers';
 
 // Protected Route Component
 const RequireAuth = ({ children }) => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  const location = useLocation();
+  const { isAuthenticated, token, loading } = useSelector(state => state.auth);
+  const localToken = localStorage.getItem(TOKEN_KEY);
+  const localUser = localStorage.getItem(USER_KEY);
+
+  // If still loading auth state, show loading or wait
+  if (loading) {
+    return <div>Loading...</div>; // Or a proper loading component
   }
+
+  // Check both Redux state and localStorage
+  const hasValidAuth = (isAuthenticated && token) || (localToken && localUser);
+
+  if (!hasValidAuth) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   return children;
 };
 
 // Role-based Route Component
 const RequireRole = ({ children, allowedRoles }) => {
-  const role = localStorage.getItem('role');
-  if (!allowedRoles.includes(role)) {
-    return <Navigate to={role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'} replace />;
+  const { user } = useSelector(state => state.auth);
+  const localUser = localStorage.getItem(USER_KEY);
+
+  // Try to get user role from Redux state first, then localStorage
+  let userRole = user?.role;
+  if (!userRole && localUser) {
+    try {
+      const parsedUser = JSON.parse(localUser);
+      userRole = parsedUser.role;
+    } catch (error) {
+      console.error('Error parsing localStorage user:', error);
+    }
   }
+
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    const redirectPath = userRole === 'ADMIN' ? '/admin/dashboard' : '/dashboard';
+    return <Navigate to={redirectPath} replace />;
+  }
+
   return children;
 };
 

@@ -1,26 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Card, CardContent, TextField, Button, Typography, Link } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { verifyOtpUser, forgotPasswordUser } from '../../redux/actions/AuthAction';
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const { loading } = useSelector(state => state.auth);
+  const email = location.state?.email;
   const [otp, setOtp] = useState('');
+
+  useEffect(() => {
+    if (!email) {
+      toast.error('No email provided. Please restart password reset.');
+      navigate('/forgot-password');
+    }
+  }, [email, navigate]);
 
   const handleChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
     setOtp(value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (otp.length !== 6) {
       toast.error('Please enter a valid 6-digit OTP');
       return;
     }
 
-    toast.success('OTP verified successfully');
-    navigate('/reset-password');
+    const result = await dispatch(verifyOtpUser(email, otp));
+
+    if (result.success) {
+      toast.success('OTP verified successfully');
+      navigate('/reset-password', { state: { resetToken: result.data.resetToken } });
+    } else {
+      toast.error(result.message || 'Invalid OTP');
+    }
+  };
+
+  const handleResendOTP = async () => {
+    const result = await dispatch(forgotPasswordUser(email));
+    if (result.success) {
+      toast.success('New OTP sent to your email');
+      setOtp('');
+    }
   };
 
   return (
@@ -61,9 +89,10 @@ const VerifyOtp = () => {
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{ mt: 2, mb: 2, py: 1.5 }}
             >
-              Verify OTP
+              {loading ? 'Verifying...' : 'Verify OTP'}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
@@ -71,7 +100,7 @@ const VerifyOtp = () => {
                 component="button"
                 type="button"
                 variant="body2"
-                onClick={() => navigate('/forgot-password')}
+                onClick={handleResendOTP}
                 sx={{ textDecoration: 'none', color: 'primary.main' }}
               >
                 Resend OTP
