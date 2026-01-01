@@ -2,6 +2,7 @@ import { query, queryOne } from '../config/database';
 import { User, UserCreateInput, UserUpdateInput, UserResponse } from '../types/user.types';
 import { hashPassword } from '../utils/password';
 import { DatabaseError, NotFoundError } from '../utils/errors';
+import { getLookupId } from '../utils/lookup.helper';
 
 /**
  * User Model - Database operations
@@ -13,7 +14,12 @@ import { DatabaseError, NotFoundError } from '../utils/errors';
 export const findByEmail = async (email: string): Promise<User | null> => {
   try {
     const user = await queryOne<User>(
-      'SELECT * FROM users WHERE email = ?',
+      `SELECT
+        u.*,
+        l.lookup_value as role
+      FROM users u
+      LEFT JOIN lookups l ON u.role_id = l.id
+      WHERE u.email = ?`,
       [email]
     );
     return user;
@@ -28,7 +34,12 @@ export const findByEmail = async (email: string): Promise<User | null> => {
 export const findById = async (id: number): Promise<User | null> => {
   try {
     const user = await queryOne<User>(
-      'SELECT * FROM users WHERE id = ?',
+      `SELECT
+        u.*,
+        l.lookup_value as role
+      FROM users u
+      LEFT JOIN lookups l ON u.role_id = l.id
+      WHERE u.id = ?`,
       [id]
     );
     return user;
@@ -44,9 +55,15 @@ export const create = async (userData: UserCreateInput): Promise<User> => {
   try {
     const hashedPassword = await hashPassword(userData.password);
 
+    // Get role_id for USER role
+    const roleId = await getLookupId('user_role', 'USER');
+    if (!roleId) {
+      throw new DatabaseError('USER role not found in lookup table');
+    }
+
     const result: any = await query(
-      `INSERT INTO users (name, email, password_hash, company, phone, address, city, country, role)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'USER')`,
+      `INSERT INTO users (name, email, password_hash, company, phone, address, city, country, role_id, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         userData.name,
         userData.email,
@@ -56,6 +73,7 @@ export const create = async (userData: UserCreateInput): Promise<User> => {
         userData.address || null,
         userData.city || null,
         userData.country || null,
+        roleId,
       ]
     );
 
