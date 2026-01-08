@@ -36,6 +36,39 @@ import { toast } from 'react-toastify';
 import apiService, { HttpMethod } from '../../api/ApiService';
 import { API_BASE_URL } from '../../utils/Constants';
 
+const DetailSection = ({ title, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.03),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography variant="subtitle1" fontWeight={600} color="primary" sx={{ mb: 2 }}>
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
+
+const DetailRow = ({ label, value, children }) => (
+  <Box sx={{ mb: 2 }}>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+      {label}
+    </Typography>
+    {value !== undefined && value !== null && value !== '' && (
+      <Typography variant="body1" fontWeight={500}>
+        {value}
+      </Typography>
+    )}
+    {children}
+  </Box>
+);
+
 const AdminQuoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -296,39 +329,6 @@ const AdminQuoteDetails = () => {
       hour: '2-digit',
       minute: '2-digit',
     });
-
-  const DetailSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.03),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography variant="subtitle1" fontWeight={600} color="primary" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
-
-  const DetailRow = ({ label, value, children }) => (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-        {label}
-      </Typography>
-      {value !== undefined && value !== null && value !== '' && (
-        <Typography variant="body1" fontWeight={500}>
-          {value}
-        </Typography>
-      )}
-      {children}
-    </Box>
-  );
 
   const isPending = quote.status === 'PENDING';
   const isPriced = quote.status === 'PRICED';
