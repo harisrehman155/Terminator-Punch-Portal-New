@@ -30,6 +30,7 @@ import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import { toast } from 'react-toastify';
 import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -153,6 +154,45 @@ const OrderDetails = () => {
       toast.error(message);
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleDownload = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
     }
   };
 
@@ -377,7 +417,7 @@ const OrderDetails = () => {
                               size="small"
                               startIcon={<Download />}
                               variant="outlined"
-                              onClick={() => toast.info('Download not available yet')}
+                              onClick={() => handleDownload(file)}
                             >
                               Download
                             </Button>
