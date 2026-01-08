@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip } from '@mui/material';
+import {
+  Box,
+  TextField,
+  MenuItem,
+  Chip,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Edit, Delete } from '@mui/icons-material';
@@ -18,6 +31,9 @@ const OrdersList = () => {
   const [searchText, setSearchText] = useState('');
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -79,6 +95,40 @@ const OrdersList = () => {
 
     return filtered;
   }, [orders, searchText, statusFilter, typeFilter]);
+
+  const handleDeleteClick = (order) => {
+    setSelectedOrder(order);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedOrder) {
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to delete the order');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/orders/${selectedOrder.id}`,
+        token,
+      });
+      setOrders((prev) => prev.filter((order) => order.id !== selectedOrder.id));
+      toast.success('Order deleted successfully');
+      setDeleteDialogOpen(false);
+      setSelectedOrder(null);
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete order';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const columns = [
     {
@@ -164,7 +214,7 @@ const OrdersList = () => {
               color="error"
               onClick={(e) => {
                 e.stopPropagation();
-                // Handle delete
+                handleDeleteClick(params.row);
               }}
             >
               <Delete fontSize="small" />
@@ -241,6 +291,31 @@ const OrdersList = () => {
           }}
         />
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => (isDeleting ? null : setDeleteDialogOpen(false))}
+      >
+        <DialogTitle>Delete Order</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this order? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
