@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -15,26 +16,21 @@ import {
   TableHead,
   TableRow,
   Button,
-  Grid,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  TextField,
   Paper,
   Stack,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import { Download, Upload } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyOrders } from '../../data/dummyOrders';
-import { dummyOrderFiles } from '../../data/dummyOrderFiles';
-import { dummyOrderHistory } from '../../data/dummyOrderHistory';
-import { lookups } from '../../data/dummyLookups';
-import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { API_BASE_URL } from '../../utils/Constants';
+import apiService, { HttpMethod } from '../../api/ApiService';
 
 const AdminOrderDetails = () => {
   const { id } = useParams();
@@ -42,17 +38,98 @@ const AdminOrderDetails = () => {
   const token = useSelector((state) => state.auth.token);
   const [tabValue, setTabValue] = useState(0);
   const [status, setStatus] = useState('');
-  const [adminRemarks, setAdminRemarks] = useState('');
+  const [order, setOrder] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [history] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const order = dummyOrders.find((o) => o.id === parseInt(id));
-  const files = dummyOrderFiles.filter((f) => f.entity_id === parseInt(id));
-  const history = dummyOrderHistory.filter((h) => h.order_id === parseInt(id));
+  const orderStatusOptions = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
   useEffect(() => {
-    if (order) {
-      setStatus(order.status);
-    }
-  }, [order]);
+    let isMounted = true;
+
+    const fetchOrder = async () => {
+      if (!token) {
+        if (isMounted) {
+          setError('Authentication required');
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/orders/${id}`,
+          token,
+        });
+        const orderData = response?.data || null;
+
+        const filesResponse = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/files/orders/${id}`,
+          token,
+        });
+
+        if (isMounted) {
+          setOrder(orderData);
+          setFiles(filesResponse?.data || []);
+          setStatus(orderData?.status || '');
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err?.apiMessage || err?.message || 'Failed to load order');
+          setOrder(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchOrder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, token]);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <PageHeader
+          title="Order Details"
+          breadcrumbs={[
+            { label: 'Admin Dashboard', path: '/admin/dashboard' },
+            { label: 'Orders', path: '/admin/orders' },
+          ]}
+        />
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="error">
+            Failed to load order
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {error}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   if (!order) {
     return <Typography>Order not found</Typography>;
@@ -62,9 +139,119 @@ const AdminOrderDetails = () => {
     setTabValue(newValue);
   };
 
-  const handleStatusChange = (e) => {
-    setStatus(e.target.value);
-    toast.success('Status updated successfully');
+  const handleStatusChange = async (e) => {
+    const nextStatus = e.target.value;
+
+    if (!token) {
+      toast.error('Please log in again to update status');
+      return;
+    }
+
+    if (isUpdatingStatus) {
+      return;
+    }
+
+    const previousStatus = status;
+    setStatus(nextStatus);
+    setIsUpdatingStatus(true);
+
+    try {
+      const response = await apiService({
+        method: HttpMethod.PATCH,
+        endPoint: `/orders/${id}/status`,
+        data: { status: nextStatus },
+        token,
+      });
+
+      const isSuccess = response?.success === true || response?.status === 'success';
+      if (!isSuccess) {
+        throw new Error(response?.message || 'Failed to update status');
+      }
+
+      const updatedOrder = response?.data;
+      setOrder((prev) => (prev ? { ...prev, ...updatedOrder } : prev));
+      setStatus(updatedOrder?.status || nextStatus);
+      toast.success(response?.message || 'Status updated successfully');
+    } catch (err) {
+      setStatus(previousStatus);
+      toast.error(err?.apiMessage || err?.message || 'Failed to update status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+
+    if (!selectedFiles.length) {
+      return;
+    }
+
+    if (!token) {
+      toast.error('Please log in again to upload files');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const uploadResults = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const data = new FormData();
+          data.append('file', file);
+          const uploadResponse = await fetch(
+            `${API_BASE_URL}/files/orders/${id}/upload`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              body: data,
+            }
+          );
+
+          let errorMessage = null;
+          if (!uploadResponse.ok) {
+            try {
+              const payload = await uploadResponse.json();
+              errorMessage = payload?.message || null;
+            } catch (err) {
+              errorMessage = null;
+            }
+          }
+
+          return {
+            name: file.name,
+            ok: uploadResponse.ok,
+            message: errorMessage,
+          };
+        })
+      );
+
+      const failedUploads = uploadResults.filter((result) => !result.ok);
+      if (failedUploads.length > 0) {
+        const failedNames = failedUploads.map((result) => result.name).join(', ');
+        const failureMessage = failedUploads.find((result) => result.message)?.message;
+        toast.error(
+          failureMessage
+            ? `Upload failed: ${failureMessage}`
+            : `Some files failed to upload: ${failedNames}`
+        );
+      } else {
+        toast.success('Files uploaded successfully');
+      }
+
+      const filesResponse = await apiService({
+        method: HttpMethod.GET,
+        endPoint: `/files/orders/${id}`,
+        token,
+      });
+      setFiles(filesResponse?.data || []);
+    } catch (err) {
+      toast.error(err?.apiMessage || err?.message || 'Failed to upload files');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDownload = async (file) => {
@@ -135,7 +322,7 @@ const AdminOrderDetails = () => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
         {label}
       </Typography>
-      {value && (
+      {value !== undefined && value !== null && value !== '' && (
         <Typography variant="body1" fontWeight={500}>
           {value}
         </Typography>
@@ -143,6 +330,13 @@ const AdminOrderDetails = () => {
       {children}
     </Box>
   );
+
+  const placements = order.placement || [];
+  const formats = order.required_format || [];
+  const sizeLabel =
+    order.width && order.height
+      ? `${order.width} x ${order.height} ${order.unit || ''}`.trim()
+      : '-';
 
   return (
     <Box>
@@ -181,8 +375,13 @@ const AdminOrderDetails = () => {
             </Box>
             <FormControl sx={{ minWidth: 220 }}>
               <InputLabel>Change Status</InputLabel>
-              <Select value={status} onChange={handleStatusChange} label="Change Status">
-                {lookups.order_status.map((s) => (
+              <Select
+                value={status}
+                onChange={handleStatusChange}
+                label="Change Status"
+                disabled={isUpdatingStatus}
+              >
+                {orderStatusOptions.map((s) => (
                   <MenuItem key={s} value={s}>
                     {s.replace('_', ' ')}
                   </MenuItem>
@@ -210,14 +409,12 @@ const AdminOrderDetails = () => {
                   }}
                 >
                   <DetailRow label="Order Type" value={order.order_type} />
-                  <DetailRow
-                    label="Size"
-                    value={`${order.width} x ${order.height} ${order.unit}`}
-                  />
+                  <DetailRow label="Size" value={sizeLabel} />
                   {order.number_of_colors && (
                     <DetailRow label="Number of Colors" value={order.number_of_colors} />
                   )}
                   {order.fabric && <DetailRow label="Fabric" value={order.fabric} />}
+                  {order.color_type && <DetailRow label="Color Type" value={order.color_type} />}
                 </Box>
               </DetailSection>
 
@@ -231,16 +428,28 @@ const AdminOrderDetails = () => {
                 >
                   <DetailRow label="Placement">
                     <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                      {order.placement.map((place) => (
-                        <Chip key={place} label={place} size="small" />
-                      ))}
+                      {placements.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Not specified
+                        </Typography>
+                      ) : (
+                        placements.map((place) => (
+                          <Chip key={place} label={place} size="small" />
+                        ))
+                      )}
                     </Box>
                   </DetailRow>
                   <DetailRow label="Required Format">
                     <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                      {order.required_format.map((format) => (
-                        <Chip key={format} label={format} size="small" />
-                      ))}
+                      {formats.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Not specified
+                        </Typography>
+                      ) : (
+                        formats.map((format) => (
+                          <Chip key={format} label={format} size="small" />
+                        ))
+                      )}
                     </Box>
                   </DetailRow>
                 </Box>
@@ -259,9 +468,14 @@ const AdminOrderDetails = () => {
           {tabValue === 1 && (
             <DetailSection title="Files">
               <Box mb={2}>
-                <Button variant="contained" startIcon={<Upload />} component="label">
-                  Upload Response File
-                  <input type="file" hidden />
+                <Button
+                  variant="contained"
+                  startIcon={<Upload />}
+                  component="label"
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Upload Response File'}
+                  <input type="file" hidden multiple onChange={handleFileUpload} />
                 </Button>
               </Box>
               {files.length === 0 ? (
@@ -285,8 +499,12 @@ const AdminOrderDetails = () => {
                         <TableRow key={file.id} hover>
                           <TableCell>{file.original_name}</TableCell>
                           <TableCell>{file.mime_type}</TableCell>
-                          <TableCell>{(file.size_bytes / 1024).toFixed(2)} KB</TableCell>
-                          <TableCell>{file.file_role.replace('_', ' ')}</TableCell>
+                          <TableCell>
+                            {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {file.file_role ? file.file_role.replace('_', ' ') : '-'}
+                          </TableCell>
                           <TableCell>
                             <Button
                               size="small"
@@ -342,25 +560,6 @@ const AdminOrderDetails = () => {
               )}
             </DetailSection>
           )}
-
-          <DetailSection title="Admin Remarks / Notes">
-            <TextField
-              fullWidth
-              label="Add remarks or notes about this order"
-              value={adminRemarks}
-              onChange={(e) => setAdminRemarks(e.target.value)}
-              multiline
-              rows={4}
-              placeholder="Enter any internal notes or remarks about this order..."
-            />
-            <Button
-              variant="contained"
-              onClick={() => toast.success('Admin remarks saved successfully')}
-              sx={{ mt: 2 }}
-            >
-              Save Remarks
-            </Button>
-          </DetailSection>
         </CardContent>
       </Card>
     </Box>
