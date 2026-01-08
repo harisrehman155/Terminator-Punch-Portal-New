@@ -17,7 +17,8 @@ export const fetchUserOrders = (filters = {}) => {
                 token: token
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 dispatch({
                     type: FETCH_USER_ORDERS,
                     payload: response.data
@@ -54,7 +55,8 @@ export const fetchUserQuotes = (filters = {}) => {
                 token: token
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 dispatch({
                     type: FETCH_USER_QUOTES,
                     payload: response.data
@@ -91,7 +93,8 @@ export const fetchAdminOrders = (filters = {}) => {
                 token: token
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 dispatch({
                     type: 'FETCH_ADMIN_ORDERS',
                     payload: response.data.orders
@@ -128,7 +131,8 @@ export const fetchAdminQuotes = (filters = {}) => {
                 token: token
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 dispatch({
                     type: 'FETCH_ADMIN_QUOTES',
                     payload: response.data.quotes
