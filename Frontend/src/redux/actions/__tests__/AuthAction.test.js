@@ -19,7 +19,7 @@ const middlewares = [thunk];
 const mockStore = configureMockStore(middlewares);
 
 describe('Auth Actions Tests', () => {
-  let store: any;
+  let store;
 
   beforeEach(() => {
     store = mockStore({
@@ -49,7 +49,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockResolvedValue(mockResponse);
+      apiService.mockResolvedValue(mockResponse);
 
       const expectedActions = [
         { type: SET_AUTH_LOADING, payload: true },
@@ -89,7 +89,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(loginUser('test@example.com', 'wrong_password'));
@@ -106,7 +106,7 @@ describe('Auth Actions Tests', () => {
 
     it('should handle network errors', async () => {
       // Arrange
-      (apiService as jest.Mock).mockRejectedValue(new Error('Network error'));
+      apiService.mockRejectedValue(new Error('Network error'));
 
       // Act
       const result = await store.dispatch(loginUser('test@example.com', 'Test@1234'));
@@ -133,7 +133,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockResolvedValue(mockResponse);
+      apiService.mockResolvedValue(mockResponse);
 
       // Act
       const result = await store.dispatch(
@@ -166,7 +166,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(
@@ -191,7 +191,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(
@@ -211,7 +211,7 @@ describe('Auth Actions Tests', () => {
         message: 'OTP sent to your email'
       };
 
-      (apiService as jest.Mock).mockResolvedValue(mockResponse);
+      apiService.mockResolvedValue(mockResponse);
 
       // Act
       const result = await store.dispatch(forgotPasswordUser('test@example.com'));
@@ -235,7 +235,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(forgotPasswordUser('nonexistent@example.com'));
@@ -256,7 +256,7 @@ describe('Auth Actions Tests', () => {
         message: 'OTP verified successfully'
       };
 
-      (apiService as jest.Mock).mockResolvedValue(mockResponse);
+      apiService.mockResolvedValue(mockResponse);
 
       // Act
       const result = await store.dispatch(verifyOtpUser('test@example.com', '123456'));
@@ -284,7 +284,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(verifyOtpUser('test@example.com', '000000'));
@@ -302,7 +302,7 @@ describe('Auth Actions Tests', () => {
         message: 'Password reset successfully'
       };
 
-      (apiService as jest.Mock).mockResolvedValue(mockResponse);
+      apiService.mockResolvedValue(mockResponse);
 
       // Act
       const result = await store.dispatch(
@@ -328,7 +328,7 @@ describe('Auth Actions Tests', () => {
         }
       };
 
-      (apiService as jest.Mock).mockRejectedValue(mockError);
+      apiService.mockRejectedValue(mockError);
 
       // Act
       const result = await store.dispatch(
@@ -359,7 +359,7 @@ describe('Auth Actions Tests', () => {
         message: 'timeout of 90000ms exceeded'
       };
 
-      (apiService as jest.Mock).mockRejectedValue(timeoutError);
+      apiService.mockRejectedValue(timeoutError);
 
       // Act
       const result = await store.dispatch(loginUser('test@example.com', 'Test@1234'));
@@ -373,7 +373,7 @@ describe('Auth Actions Tests', () => {
       // Arrange
       const networkError = new Error('Network Error');
 
-      (apiService as jest.Mock).mockRejectedValue(networkError);
+      apiService.mockRejectedValue(networkError);
 
       // Act
       const result = await store.dispatch(loginUser('test@example.com', 'Test@1234'));

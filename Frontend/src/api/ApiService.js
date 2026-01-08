@@ -21,21 +21,12 @@ axios.interceptors.response.use(
     }
 );
 
-export enum HttpMethod {
-    GET = 'get',
-    POST = 'post',
-    PUT = 'put',
-    DELETE = 'delete',
-}
-
-interface ApiServiceProps {
-    method: HttpMethod;
-    endPoint: string;
-    data?: any;
-    token?: string | null;
-    headerType?: string;
-    timeout?: number;
-}
+export const HttpMethod = {
+    GET: 'get',
+    POST: 'post',
+    PUT: 'put',
+    DELETE: 'delete',
+};
 
 const apiService = async ({
     method,
@@ -44,7 +35,7 @@ const apiService = async ({
     token = null,
     headerType = 'application/json',
     timeout = 90000,
-}: ApiServiceProps) => {
+} = {}) => {
     console.log(JSON.stringify({ method, endPoint, data, token, headerType }, null, 2));
 
     try {
@@ -83,7 +74,7 @@ const apiService = async ({
                 'Something went wrong!';
             
             // Attach error message and response data to error object for easy access
-            const enhancedError: any = error;
+            const enhancedError = error;
             enhancedError.apiMessage = errorMessage;
             enhancedError.apiResponse = responseData;
             enhancedError.apiStatusCode = statusCode;
@@ -94,7 +85,7 @@ const apiService = async ({
         
         // Handle timeout errors specifically
         if (axios.isAxiosError(error) && (error.code === 'ECONNABORTED' || error.message?.includes('timeout'))) {
-            const timeoutError: any = new Error('Request timeout! Please try again.');
+            const timeoutError = new Error('Request timeout! Please try again.');
             timeoutError.apiMessage = 'Request timeout! Please try again.';
             timeoutError.code = 'ECONNABORTED';
             timeoutError.isTimeout = true;
@@ -103,14 +94,14 @@ const apiService = async ({
         
         // Handle network errors (no response)
         if (axios.isAxiosError(error) && !error.response) {
-            const networkError: any = new Error('Network error! Please check your connection.');
+            const networkError = new Error('Network error! Please check your connection.');
             networkError.apiMessage = 'Network error! Please check your connection.';
             networkError.isNetworkError = true;
             throw networkError;
         }
         
         // Handle other errors
-        const unknownError: any = error instanceof Error ? error : new Error('Something went wrong!');
+        const unknownError = error instanceof Error ? error : new Error('Something went wrong!');
         unknownError.apiMessage = 'Something went wrong!';
         throw unknownError;
     }

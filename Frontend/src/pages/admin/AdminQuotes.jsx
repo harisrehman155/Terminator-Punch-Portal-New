@@ -177,7 +177,24 @@ const AdminQuotes = () => {
   return (
     <Box>
       <PageHeader
-        title="Quotes"
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            Quotes
+            {needsActionCount > 0 && (
+              <Badge
+                badgeContent={needsActionCount}
+                color="warning"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.75rem',
+                    height: '18px',
+                    minWidth: '18px',
+                  },
+                }}
+              />
+            )}
+          </Box>
+        }
         breadcrumbs={[
           { label: 'Admin Dashboard', path: '/admin/dashboard' },
           { label: 'Quotes' },
@@ -190,23 +207,16 @@ const AdminQuotes = () => {
           label="Status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          sx={{ minWidth: 180 }}
+          sx={{ minWidth: 150 }}
           size="small"
         >
           <MenuItem value="needs_action">
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              Needs Action
-              {needsActionCount > 0 && (
-                <Chip label={needsActionCount} size="small" color="warning" />
-              )}
-            </Box>
+            Needs Action ({needsActionCount})
           </MenuItem>
           <MenuItem value="all">All</MenuItem>
-          {lookups.quote_status.map((status) => (
-            <MenuItem key={status} value={status}>
-              {status.replace(/_/g, ' ')}
-            </MenuItem>
-          ))}
+          <MenuItem value="PENDING">Pending</MenuItem>
+          <MenuItem value="PRICED">Priced</MenuItem>
+          <MenuItem value="CONVERTED">Converted</MenuItem>
         </TextField>
 
         <TextField
@@ -218,11 +228,9 @@ const AdminQuotes = () => {
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
-          {lookups.order_types.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
-            </MenuItem>
-          ))}
+          <MenuItem value="DIGITIZING">Digitizing</MenuItem>
+          <MenuItem value="VECTOR">Vector</MenuItem>
+          <MenuItem value="PATCHES">Patches</MenuItem>
         </TextField>
 
         <TextField

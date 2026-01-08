@@ -23,12 +23,12 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('Login Component Tests', () => {
-  let store: any;
+  let store;
 
   beforeEach(() => {
     store = configureStore({
       reducer: {
-        auth: (state = { loading: false, error: null }, action: any) => {
+        auth: (state = { loading: false, error: null }, action) => {
           switch (action.type) {
             case 'SET_AUTH_LOADING':
               return { ...state, loading: action.payload };
@@ -115,7 +115,7 @@ describe('Login Component Tests', () => {
 
   describe('Login Functionality', () => {
     it('should login successfully with USER role', async () => {
-      const mockLoginUser = loginUser as jest.Mock;
+      const mockLoginUser = loginUser;
       mockLoginUser.mockResolvedValue({
         success: true,
         data: {
@@ -146,7 +146,7 @@ describe('Login Component Tests', () => {
     });
 
     it('should login successfully with ADMIN role', async () => {
-      const mockLoginUser = loginUser as jest.Mock;
+      const mockLoginUser = loginUser;
       mockLoginUser.mockResolvedValue({
         success: true,
         data: {
@@ -175,7 +175,7 @@ describe('Login Component Tests', () => {
     });
 
     it('should handle login failure', async () => {
-      const mockLoginUser = loginUser as jest.Mock;
+      const mockLoginUser = loginUser;
       mockLoginUser.mockResolvedValue({
         success: false,
         message: 'Invalid credentials'
@@ -199,7 +199,7 @@ describe('Login Component Tests', () => {
     });
 
     it('should display field-level validation errors', async () => {
-      const mockLoginUser = loginUser as jest.Mock;
+      const mockLoginUser = loginUser;
       mockLoginUser.mockResolvedValue({
         success: false,
         errors: {
@@ -227,12 +227,12 @@ describe('Login Component Tests', () => {
 
   describe('Loading State', () => {
     it('should show loading state during login', async () => {
-      const mockLoginUser = loginUser as jest.Mock;
+      const mockLoginUser = loginUser;
       mockLoginUser.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
 
       store = configureStore({
         reducer: {
-          auth: (state = { loading: true, error: null }, action: any) => state
+          auth: (state = { loading: true, error: null }, action) => state
         }
       });
 
@@ -267,7 +267,7 @@ describe('Login Component Tests', () => {
     it('should update email field on change', () => {
       renderLogin();
 
-      const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+      const emailInput = screen.getByLabelText(/email/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
       expect(emailInput.value).toBe('test@example.com');
@@ -276,7 +276,7 @@ describe('Login Component Tests', () => {
     it('should update password field on change', () => {
       renderLogin();
 
-      const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+      const passwordInput = screen.getByLabelText(/password/i);
       fireEvent.change(passwordInput, { target: { value: 'Test@1234' } });
 
       expect(passwordInput.value).toBe('Test@1234');

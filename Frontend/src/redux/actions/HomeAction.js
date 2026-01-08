@@ -1,9 +1,9 @@
 import { FETCH_LOOKUP_VALUES, CATEGORIES, FETCH_PRODUCTS, SET_PRODUCTS_LOADING, SET_PRODUCTS_ERROR, FETCH_TRENDING_PRODUCTS, FETCH_LATEST_PRODUCTS, FETCH_RECOMMENDED_PRODUCTS, FETCH_PRODUCT_DETAIL, SET_PRODUCT_DETAIL_LOADING } from "../ActionTypes";
-import { categoryHeaderIds } from "../../Utils/Constants";
+import { categoryHeaderIds } from "../../utils/Constants";
 import apiService, { HttpMethod } from "../../api/ApiService";
 
 export const fetchLookupValues = () => {
-    return async (dispatch: any) => {
+    return async (dispatch) => {
         try {
             const headerIds = Object.values(categoryHeaderIds);
             const response = await apiService({
@@ -30,8 +30,8 @@ export const fetchLookupValues = () => {
     };
 };
 
-export const fetchProducts = (filters: any = {}) => {
-    return async (dispatch: any) => {
+export const fetchProducts = (filters = {}) => {
+    return async (dispatch) => {
         try {
             dispatch({ type: SET_PRODUCTS_LOADING, payload: true });
 
@@ -108,7 +108,7 @@ export const fetchProducts = (filters: any = {}) => {
 };
 
 export const fetchTrendingProducts = () => {
-    return async (dispatch: any) => {
+    return async (dispatch) => {
         try {
             const response = await apiService({
                 method: HttpMethod.GET,
@@ -142,7 +142,7 @@ export const fetchTrendingProducts = () => {
 };
 
 export const fetchLatestProducts = () => {
-    return async (dispatch: any) => {
+    return async (dispatch) => {
         try {
             const response = await apiService({
                 method: HttpMethod.GET,
@@ -166,7 +166,7 @@ export const fetchLatestProducts = () => {
 };
 
 export const fetchRecommendedProducts = (limit = 8) => {
-    return async (dispatch: any) => {
+    return async (dispatch) => {
         try {
             const response = await apiService({
                 method: HttpMethod.GET,
@@ -189,8 +189,8 @@ export const fetchRecommendedProducts = (limit = 8) => {
     };
 };
 
-export const fetchProductDetail = (productId: string | number) => {
-    return async (dispatch: any) => {
+export const fetchProductDetail = (productId) => {
+    return async (dispatch) => {
         try {
             dispatch({ type: SET_PRODUCT_DETAIL_LOADING, payload: true });
 
@@ -217,8 +217,8 @@ export const fetchProductDetail = (productId: string | number) => {
     };
 };
 
-export const fetchCategories = (status: string = 'Active') => {
-    return async (dispatch: any) => {
+export const fetchCategories = (status = 'Active') => {
+    return async (dispatch) => {
         try {
             const response = await apiService({
                 method: HttpMethod.GET,

@@ -143,7 +143,6 @@ Backend/
 - `lookup_header` - Lookup categories
 - `lookups` - Lookup values
 
-See `plan/DATABASE_SCHEMA_PLAN_REVISED.md` for details.
 
 ## Testing
 
@@ -171,7 +170,6 @@ This project follows **Test-Driven Development (TDD)**:
 2. Implement code to pass tests
 3. Refactor while keeping tests green
 
-See `plan/BACKEND_IMPLEMENTATION_PLAN.md` for detailed checklist.
 
 ## Security
 
@@ -189,17 +187,6 @@ See `plan/BACKEND_IMPLEMENTATION_PLAN.md` for detailed checklist.
 2. Set `NODE_ENV=production`
 3. Configure production environment variables
 4. Start server: `npm start`
-
-## Documentation
-
-- Implementation Plan: `plan/BACKEND_IMPLEMENTATION_PLAN.md`
-- Database Schema: `plan/DATABASE_SCHEMA_PLAN_REVISED.md`
-- MCP Setup: `plan/MCP_MYSQL_SETUP_GUIDE.md`
-- Import Guide: `plan/DATABASE_IMPORT_INSTRUCTIONS.md`
-
-## Support
-
-For issues or questions, check the `plan/` directory for detailed guides.
 
 ## License
 
