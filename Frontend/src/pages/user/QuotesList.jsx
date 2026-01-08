@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
-import { Visibility, Edit, Delete } from '@mui/icons-material';
+import { Visibility, Edit, Delete, ShoppingCart } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
@@ -52,9 +52,60 @@ const QuotesList = () => {
           token,
         });
 
-        const list = response?.data?.quotes || [];
+        const list = response?.data?.quotes || response?.data || response?.quotes || [];
         if (isMounted) {
-          setQuotes(list);
+          const normalized = list.map((quote) => {
+            const quoteType =
+              quote.service_type ||
+              quote.quote_type ||
+              quote.type ||
+              quote.order_type ||
+              quote.serviceType ||
+              quote.quoteType ||
+              quote.orderType ||
+              '';
+            const rawPrice =
+              quote.price ??
+              quote.current_price ??
+              quote.pricing_history?.[0]?.price ??
+              null;
+            const price =
+              rawPrice === '' || rawPrice === null || rawPrice === undefined
+                ? null
+                : Number(rawPrice);
+            const rawRemarks =
+              quote.remarks ||
+              quote.pricing_history?.[0]?.admin_notes ||
+              quote.pricing_history?.[0]?.remarks ||
+              quote.remarks_history?.[0]?.message ||
+              quote.admin_notes ||
+              '';
+            const remarks = rawRemarks ? String(rawRemarks) : '';
+            const currency =
+              quote.currency || quote.pricing_history?.[0]?.currency || 'USD';
+            const createdAt =
+              quote.created_at ||
+              quote.createdAt ||
+              quote.created ||
+              quote.created_date ||
+              quote.createdDate ||
+              quote.updated_at ||
+              quote.updatedAt ||
+              quote.updated ||
+              quote.updated_date ||
+              quote.updatedDate ||
+              null;
+
+            return {
+              ...quote,
+              quote_type: quoteType ? String(quoteType).toUpperCase() : '',
+              price,
+              remarks,
+              currency,
+              created_at: createdAt,
+            };
+          });
+          setQuotes(normalized);
         }
       } catch (error) {
         const message = error?.apiMessage || error?.message || 'Failed to load quotes';
@@ -82,7 +133,7 @@ const QuotesList = () => {
 
     if (typeFilter !== 'all') {
       filtered = filtered.filter(
-        (quote) => (quote.service_type || quote.quote_type) === typeFilter
+        (quote) => (quote.quote_type || quote.service_type) === typeFilter
       );
     }
 
@@ -132,6 +183,17 @@ const QuotesList = () => {
     }
   };
 
+  const truncateText = (value, limit = 100) => {
+    if (!value) {
+      return '-';
+    }
+    const text = String(value);
+    if (text.length <= limit) {
+      return text;
+    }
+    return `${text.slice(0, limit)}...`;
+  };
+
   const columns = [
     {
       field: 'quote_no',
@@ -149,9 +211,22 @@ const QuotesList = () => {
     {
       field: 'quote_type',
       headerName: 'Type',
-      width: 120,
-      valueGetter: (params) =>
-        params?.row?.service_type || params?.row?.quote_type || '',
+      width: 140,
+      renderCell: (params) => {
+        const value =
+          params.row?.quote_type ||
+          params.row?.service_type ||
+          params.row?.type ||
+          params.row?.order_type ||
+          params.row?.serviceType ||
+          params.row?.quoteType ||
+          params.row?.orderType ||
+          '-';
+        if (!value) {
+          return '-';
+        }
+        return String(value).replace('_', ' ');
+      },
     },
     {
       field: 'design_name',
@@ -165,26 +240,59 @@ const QuotesList = () => {
       renderCell: (params) => <StatusChip status={params.value} type="quote" />,
     },
     {
-      field: 'current_price',
+      field: 'price',
       headerName: 'Price',
-      width: 120,
-        renderCell: (params) =>
-          params.value ? (
-            <Chip
-              label={`${params.row.currency || 'USD'} ${params.value}`}
-              size="small"
-              color="success"
-            />
-          ) : (
-            <Chip label="Pending" size="small" />
+      width: 140,
+      renderCell: (params) =>
+        params.value !== null && params.value !== undefined ? (
+          <Chip
+            label={`${params.row.currency || 'USD'} ${Number(params.value).toFixed(2)}`}
+            size="small"
+            color="success"
+          />
+        ) : (
+          <Chip label="Pending" size="small" />
         ),
+    },
+    {
+      field: 'remarks',
+      headerName: 'Remarks',
+      width: 260,
+      renderCell: (params) => (
+        <Tooltip title={params.value || ''} disableHoverListener={!params.value}>
+          <Box component="span">{truncateText(params.value)}</Box>
+        </Tooltip>
+      ),
     },
     {
       field: 'created_at',
       headerName: 'Created',
       width: 180,
-      valueFormatter: (params) =>
-        params.value ? new Date(params.value).toLocaleDateString() : '-',
+      renderCell: (params) => {
+        const value =
+          params?.row?.created_at ||
+          params?.row?.createdAt ||
+          params?.row?.created ||
+          params?.row?.created_date ||
+          params?.row?.createdDate ||
+          params?.row?.updated_at ||
+          params?.row?.updatedAt ||
+          params?.row?.updated ||
+          params?.row?.updated_date ||
+          params?.row?.updatedDate ||
+          null;
+        if (!value) {
+          return '-';
+        }
+        return new Date(value).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      },
     },
     {
       field: 'actions',
@@ -205,6 +313,20 @@ const QuotesList = () => {
               <Visibility fontSize="small" />
             </IconButton>
           </Tooltip>
+          {params.row.status === 'PRICED' && (
+            <Tooltip title="Priced - convert to order available">
+              <IconButton
+                size="small"
+                color="success"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/quotes/${params.row.id}`);
+                }}
+              >
+                <ShoppingCart fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Edit">
             <IconButton
               size="small"
