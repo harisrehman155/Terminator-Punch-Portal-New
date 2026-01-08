@@ -255,16 +255,26 @@ export const cancelOrder = async (
  */
 export const deleteOrder = async (
   orderId: number,
+  userId: number,
   userRole: string
 ): Promise<void> => {
-  if (userRole !== 'ADMIN') {
-    throw new ForbiddenError('Only admins can delete orders');
-  }
-
   const existingOrder = await OrderModel.findById(orderId);
 
   if (!existingOrder) {
     throw new NotFoundError('Order not found');
+  }
+
+  if (userRole !== 'ADMIN') {
+    if (existingOrder.user_id !== userId) {
+      throw new ForbiddenError('You do not have permission to delete this order');
+    }
+
+    if (existingOrder.status === 'COMPLETED') {
+      throw new ValidationError('Cannot delete completed orders');
+    }
+
+    await OrderModel.softDelete(orderId);
+    return;
   }
 
   await OrderModel.hardDelete(orderId);
