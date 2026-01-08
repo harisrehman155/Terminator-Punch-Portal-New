@@ -1,4 +1,4 @@
-import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR } from '../ActionTypes';
+import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, UPDATE_PROFILE, GET_PROFILE } from '../ActionTypes';
 import { TOKEN_KEY, USER_KEY } from '../../utils/Constants';
 
 interface AuthState {
@@ -53,6 +53,28 @@ const AuthReducer = (state = initialState, action: any): AuthState => {
       return {
         ...state,
         error: action.payload
+      };
+
+    case GET_PROFILE:
+      // Update user data in localStorage when profile is fetched
+      if (action.payload) {
+        localStorage.setItem(USER_KEY, JSON.stringify(action.payload));
+      }
+      return {
+        ...state,
+        user: action.payload,
+        error: null
+      };
+
+    case UPDATE_PROFILE:
+      // Update user data in localStorage when profile is updated
+      if (action.payload) {
+        localStorage.setItem(USER_KEY, JSON.stringify(action.payload));
+      }
+      return {
+        ...state,
+        user: action.payload,
+        error: null
       };
 
     default:

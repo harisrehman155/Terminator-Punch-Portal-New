@@ -1,5 +1,6 @@
 import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Dashboard as DashboardIcon,
   ShoppingCart as OrdersIcon,
@@ -12,7 +13,8 @@ import {
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = localStorage.getItem('role') || 'USER';
+  const { user } = useSelector((state) => state.auth);
+  const role = user?.role || 'USER';
 
   const userMenuItems = [
     { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },

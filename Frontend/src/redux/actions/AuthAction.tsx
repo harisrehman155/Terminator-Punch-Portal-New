@@ -1,4 +1,4 @@
-import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, FORGOT_PASSWORD, RESET_PASSWORD } from "../ActionTypes";
+import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, FORGOT_PASSWORD, RESET_PASSWORD, UPDATE_PROFILE, GET_PROFILE } from "../ActionTypes";
 import apiService, { HttpMethod } from "../../api/ApiService";
 import { TOKEN_KEY, USER_KEY } from "../../utils/Constants";
 
@@ -279,6 +279,103 @@ export const resetPasswordUser = (resetToken, newPassword) => {
                 return { success: false, message: responseData.message || "Failed to reset password" };
             } else {
                 const errorMessage = "Failed to reset password. Please try again.";
+                dispatch(setAuthError(errorMessage));
+                return { success: false, message: errorMessage };
+            }
+        } finally {
+            dispatch(setAuthLoading(false));
+        }
+    };
+};
+
+// Get profile action
+export const getProfile = (profileData) => {
+    return {
+        type: GET_PROFILE,
+        payload: profileData
+    };
+};
+
+// Update profile action
+export const updateProfile = (profileData) => {
+    return {
+        type: UPDATE_PROFILE,
+        payload: profileData
+    };
+};
+
+// Get user profile action
+export const getUserProfile = () => {
+    return async (dispatch, getState) => {
+        try {
+            dispatch(setAuthLoading(true));
+            dispatch(setAuthError(null));
+
+            const token = getState().auth.token;
+
+            const response = await apiService({
+                method: HttpMethod.GET,
+                endPoint: "/auth/me",
+                token: token
+            });
+
+            if (response.success) {
+                dispatch(getProfile(response.data));
+                return { success: true, data: response.data };
+            } else {
+                dispatch(setAuthError(response.message));
+                return { success: false, message: response.message };
+            }
+        } catch (error) {
+            console.error('Get profile error:', error);
+
+            if (error.response && error.response.data) {
+                const responseData = error.response.data;
+                dispatch(setAuthError(responseData.message || "Failed to get profile"));
+                return { success: false, message: responseData.message || "Failed to get profile" };
+            } else {
+                const errorMessage = "Failed to get profile. Please try again.";
+                dispatch(setAuthError(errorMessage));
+                return { success: false, message: errorMessage };
+            }
+        } finally {
+            dispatch(setAuthLoading(false));
+        }
+    };
+};
+
+// Update user profile action
+export const updateUserProfile = (profileData) => {
+    return async (dispatch, getState) => {
+        try {
+            dispatch(setAuthLoading(true));
+            dispatch(setAuthError(null));
+
+            const token = getState().auth.token;
+
+            const response = await apiService({
+                method: HttpMethod.PUT,
+                endPoint: "/auth/profile",
+                data: profileData,
+                token: token
+            });
+
+            if (response.success) {
+                dispatch(updateProfile(response.data));
+                return { success: true, data: response.data, message: response.message };
+            } else {
+                dispatch(setAuthError(response.message));
+                return { success: false, message: response.message };
+            }
+        } catch (error) {
+            console.error('Update profile error:', error);
+
+            if (error.response && error.response.data) {
+                const responseData = error.response.data;
+                dispatch(setAuthError(responseData.message || "Failed to update profile"));
+                return { success: false, message: responseData.message || "Failed to update profile" };
+            } else {
+                const errorMessage = "Failed to update profile. Please try again.";
                 dispatch(setAuthError(errorMessage));
                 return { success: false, message: errorMessage };
             }

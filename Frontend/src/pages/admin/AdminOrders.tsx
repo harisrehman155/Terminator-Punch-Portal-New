@@ -175,11 +175,10 @@ const AdminOrders = () => {
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
-          {lookups.order_status.map((status) => (
-            <MenuItem key={status} value={status}>
-              {status.replace('_', ' ')}
-            </MenuItem>
-          ))}
+          <MenuItem value="PENDING">Pending</MenuItem>
+          <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+          <MenuItem value="COMPLETED">Completed</MenuItem>
+          <MenuItem value="CANCELLED">Cancelled</MenuItem>
         </TextField>
 
         <TextField
@@ -191,11 +190,9 @@ const AdminOrders = () => {
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
-          {lookups.order_types.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
-            </MenuItem>
-          ))}
+          <MenuItem value="DIGITIZING">Digitizing</MenuItem>
+          <MenuItem value="VECTOR">Vector</MenuItem>
+          <MenuItem value="PATCHES">Patches</MenuItem>
         </TextField>
 
         <TextField

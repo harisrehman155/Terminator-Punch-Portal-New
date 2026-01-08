@@ -1,25 +1,33 @@
-import { useState } from 'react';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, Badge } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, Badge, CircularProgress, Typography } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Warning } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyQuotes } from '../../data/dummyQuotes';
-import { lookups } from '../../data/dummyLookups';
+import { fetchAdminQuotes } from '../../redux/actions/PortalAction';
 
 const AdminQuotes = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { adminQuotes, dashboardLoading, dashboardError } = useSelector((state) => state.home);
+
   const [statusFilter, setStatusFilter] = useState('needs_action');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
 
-  // Count quotes needing action
-  const needsActionCount = dummyQuotes.filter(
-    (q) => q.status === 'PENDING' || q.status === 'REVISION_REQUESTED'
-  ).length;
+  // Fetch admin quotes on component mount
+  useEffect(() => {
+    dispatch(fetchAdminQuotes());
+  }, [dispatch]);
 
-  let filteredQuotes = dummyQuotes;
+  // Count quotes needing action
+  const needsActionCount = adminQuotes?.filter(
+    (q) => q.status === 'PENDING' || q.status === 'REVISION_REQUESTED'
+  ).length || 0;
+
+  let filteredQuotes = adminQuotes || [];
 
   if (statusFilter === 'needs_action') {
     filteredQuotes = filteredQuotes.filter(
@@ -30,14 +38,44 @@ const AdminQuotes = () => {
   }
 
   if (typeFilter !== 'all') {
-    filteredQuotes = filteredQuotes.filter(q => q.quote_type === typeFilter);
+    filteredQuotes = filteredQuotes.filter(q => q.service_type === typeFilter);
   }
 
   if (searchText) {
     filteredQuotes = filteredQuotes.filter(
       q =>
-        q.quote_no.toLowerCase().includes(searchText.toLowerCase()) ||
-        q.design_name.toLowerCase().includes(searchText.toLowerCase())
+        q.quote_no?.toLowerCase().includes(searchText.toLowerCase()) ||
+        q.design_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        q.user?.name?.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }
+
+  // Show loading state
+  if (dashboardLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (dashboardError) {
+    return (
+      <>
+        <PageHeader
+          title="Quotes Management"
+          breadcrumbs={[{ label: 'Admin Dashboard', path: '/admin/dashboard' }, { label: 'Quotes' }]}
+        />
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="error">
+            Failed to load quotes
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {dashboardError}
+          </Typography>
+        </Box>
+      </>
     );
   }
 
@@ -56,7 +94,22 @@ const AdminQuotes = () => {
       ),
     },
     {
-      field: 'quote_type',
+      field: 'user',
+      headerName: 'Customer',
+      width: 200,
+      renderCell: (params) => (
+        <Box>
+          <Typography variant="body2" fontWeight={500}>
+            {params.value?.name || 'N/A'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {params.value?.email || ''}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'service_type',
       headerName: 'Type',
       width: 120,
     },
@@ -79,13 +132,13 @@ const AdminQuotes = () => {
       ),
     },
     {
-      field: 'current_price',
+      field: 'price',
       headerName: 'Price',
       width: 120,
       renderCell: (params) =>
         params.value ? (
           <Chip
-            label={`${params.row.currency} ${params.value}`}
+            label={`${params.row.currency || 'USD'} ${params.value}`}
             size="small"
             color="success"
           />

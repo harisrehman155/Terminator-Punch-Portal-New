@@ -1,44 +1,52 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, CircularProgress, Typography } from '@mui/material';
+import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, Badge, CircularProgress, Typography } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
-import { Visibility } from '@mui/icons-material';
+import { Visibility, Warning } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { fetchAdminOrders } from '../../redux/actions/PortalAction';
+import { fetchAdminQuotes } from '../../redux/actions/PortalAction';
 
-const AdminOrders = () => {
+const AdminQuotes = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { adminOrders, dashboardLoading, dashboardError } = useSelector((state) => state.home);
+  const { adminQuotes, dashboardLoading, dashboardError } = useSelector((state) => state.home);
 
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('needs_action');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
 
-  // Fetch admin orders on component mount
+  // Fetch admin quotes on component mount
   useEffect(() => {
-    dispatch(fetchAdminOrders());
+    dispatch(fetchAdminQuotes());
   }, [dispatch]);
 
-  // Apply client-side filtering
-  let filteredOrders = adminOrders || [];
+  // Count quotes needing action
+  const needsActionCount = adminQuotes?.filter(
+    (q) => q.status === 'PENDING' || q.status === 'REVISION_REQUESTED'
+  ).length || 0;
 
-  if (statusFilter !== 'all') {
-    filteredOrders = filteredOrders.filter(o => o.status === statusFilter);
+  let filteredQuotes = adminQuotes || [];
+
+  if (statusFilter === 'needs_action') {
+    filteredQuotes = filteredQuotes.filter(
+      (q) => q.status === 'PENDING' || q.status === 'REVISION_REQUESTED'
+    );
+  } else if (statusFilter !== 'all') {
+    filteredQuotes = filteredQuotes.filter(q => q.status === statusFilter);
   }
 
   if (typeFilter !== 'all') {
-    filteredOrders = filteredOrders.filter(o => o.order_type === typeFilter);
+    filteredQuotes = filteredQuotes.filter(q => q.service_type === typeFilter);
   }
 
   if (searchText) {
-    filteredOrders = filteredOrders.filter(
-      o =>
-        o.order_no?.toLowerCase().includes(searchText.toLowerCase()) ||
-        o.design_name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        o.user?.name?.toLowerCase().includes(searchText.toLowerCase())
+    filteredQuotes = filteredQuotes.filter(
+      q =>
+        q.quote_no?.toLowerCase().includes(searchText.toLowerCase()) ||
+        q.design_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        q.user?.name?.toLowerCase().includes(searchText.toLowerCase())
     );
   }
 
@@ -56,12 +64,12 @@ const AdminOrders = () => {
     return (
       <>
         <PageHeader
-          title="Orders Management"
-          breadcrumbs={[{ label: 'Admin Dashboard', path: '/admin/dashboard' }, { label: 'Orders' }]}
+          title="Quotes Management"
+          breadcrumbs={[{ label: 'Admin Dashboard', path: '/admin/dashboard' }, { label: 'Quotes' }]}
         />
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="error">
-            Failed to load orders
+            Failed to load quotes
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>
             {dashboardError}
@@ -73,22 +81,17 @@ const AdminOrders = () => {
 
   const columns = [
     {
-      field: 'order_no',
-      headerName: 'Order #',
+      field: 'quote_no',
+      headerName: 'Quote #',
       width: 180,
       renderCell: (params) => (
         <Chip
           label={params.value}
           size="small"
-          onClick={() => navigate(`/admin/orders/${params.row.id}`)}
+          onClick={() => navigate(`/admin/quotes/${params.row.id}`)}
           sx={{ cursor: 'pointer' }}
         />
       ),
-    },
-    {
-      field: 'order_type',
-      headerName: 'Type',
-      width: 120,
     },
     {
       field: 'user',
@@ -106,6 +109,11 @@ const AdminOrders = () => {
       ),
     },
     {
+      field: 'service_type',
+      headerName: 'Type',
+      width: 120,
+    },
+    {
       field: 'design_name',
       headerName: 'Design',
       width: 200,
@@ -113,24 +121,35 @@ const AdminOrders = () => {
     {
       field: 'status',
       headerName: 'Status',
-      width: 150,
-      renderCell: (params) => <StatusChip status={params.value} />,
+      width: 180,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <StatusChip status={params.value} type="quote" />
+          {(params.value === 'PENDING' || params.value === 'REVISION_REQUESTED') && (
+            <Warning fontSize="small" color="warning" />
+          )}
+        </Box>
+      ),
     },
     {
-      field: 'is_urgent',
-      headerName: 'Urgent',
-      width: 100,
+      field: 'price',
+      headerName: 'Price',
+      width: 120,
       renderCell: (params) =>
         params.value ? (
-          <Chip label="Yes" size="small" color="error" />
+          <Chip
+            label={`${params.row.currency || 'USD'} ${params.value}`}
+            size="small"
+            color="success"
+          />
         ) : (
-          <Chip label="No" size="small" />
+          <Chip label="Not Set" size="small" variant="outlined" />
         ),
     },
     {
       field: 'created_at',
       headerName: 'Created',
-      width: 180,
+      width: 150,
       valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
     },
     {
@@ -145,7 +164,7 @@ const AdminOrders = () => {
             size="small"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/admin/orders/${params.row.id}`);
+              navigate(`/admin/quotes/${params.row.id}`);
             }}
           >
             <Visibility fontSize="small" />
@@ -158,10 +177,27 @@ const AdminOrders = () => {
   return (
     <Box>
       <PageHeader
-        title="Orders"
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            Quotes
+            {needsActionCount > 0 && (
+              <Badge
+                badgeContent={needsActionCount}
+                color="warning"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.75rem',
+                    height: '18px',
+                    minWidth: '18px',
+                  },
+                }}
+              />
+            )}
+          </Box>
+        }
         breadcrumbs={[
           { label: 'Admin Dashboard', path: '/admin/dashboard' },
-          { label: 'Orders' },
+          { label: 'Quotes' },
         ]}
       />
 
@@ -174,12 +210,13 @@ const AdminOrders = () => {
           sx={{ minWidth: 150 }}
           size="small"
         >
+          <MenuItem value="needs_action">
+            Needs Action ({needsActionCount})
+          </MenuItem>
           <MenuItem value="all">All</MenuItem>
-          {lookups.order_status.map((status) => (
-            <MenuItem key={status} value={status}>
-              {status.replace('_', ' ')}
-            </MenuItem>
-          ))}
+          <MenuItem value="PENDING">Pending</MenuItem>
+          <MenuItem value="PRICED">Priced</MenuItem>
+          <MenuItem value="CONVERTED">Converted</MenuItem>
         </TextField>
 
         <TextField
@@ -191,11 +228,9 @@ const AdminOrders = () => {
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
-          {lookups.order_types.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
-            </MenuItem>
-          ))}
+          <MenuItem value="DIGITIZING">Digitizing</MenuItem>
+          <MenuItem value="VECTOR">Vector</MenuItem>
+          <MenuItem value="PATCHES">Patches</MenuItem>
         </TextField>
 
         <TextField
@@ -209,11 +244,11 @@ const AdminOrders = () => {
 
       <Box sx={{ height: 600, width: '100%' }}>
         <DataGrid
-          rows={filteredOrders}
+          rows={filteredQuotes}
           columns={columns}
           pageSize={10}
           rowsPerPageOptions={[10, 25, 50]}
-          onRowClick={(params) => navigate(`/admin/orders/${params.row.id}`)}
+          onRowClick={(params) => navigate(`/admin/quotes/${params.row.id}`)}
           sx={{
             '& .MuiDataGrid-row:hover': {
               cursor: 'pointer',
@@ -225,5 +260,5 @@ const AdminOrders = () => {
   );
 };
 
-export default AdminOrders;
+export default AdminQuotes;
 
