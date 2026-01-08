@@ -11,6 +11,21 @@ import {
   OrderResponse,
 } from '../types/order.types';
 
+const resolveLookupId = async (
+  primaryType: string,
+  fallbackType: string | null,
+  value: string
+): Promise<number | null> => {
+  const primary = await getLookupId(primaryType, value);
+  if (primary !== null) {
+    return primary;
+  }
+  if (!fallbackType) {
+    return null;
+  }
+  return getLookupId(fallbackType, value);
+};
+
 /**
  * Order Model - Database operations for orders
  */
@@ -27,7 +42,11 @@ export const create = async (
     const orderNo = generateOrderNumber();
 
     // Get lookup IDs for order type, status, and unit
-    const serviceTypeId = await getLookupId('service_type', orderData.order_type);
+    const serviceTypeId = await resolveLookupId(
+      'service_type',
+      'order_type',
+      orderData.order_type
+    );
     if (!serviceTypeId) {
       throw new DatabaseError('Invalid order type');
     }
@@ -39,7 +58,11 @@ export const create = async (
 
     let unitId: number | null = null;
     if (orderData.unit) {
-      unitId = await getLookupId('unit', orderData.unit);
+      unitId = await resolveLookupId(
+        'measurement_unit',
+        'unit',
+        orderData.unit
+      );
     }
 
     // Prepare JSON fields
@@ -399,7 +422,7 @@ export const update = async (
 
     if (updateData.unit !== undefined) {
       const unitId = updateData.unit
-        ? await getLookupId('unit', updateData.unit)
+        ? await resolveLookupId('measurement_unit', 'unit', updateData.unit)
         : null;
       updates.push('unit_id = ?');
       params.push(unitId);
