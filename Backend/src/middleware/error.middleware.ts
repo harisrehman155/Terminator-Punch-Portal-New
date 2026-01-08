@@ -69,6 +69,14 @@ export const errorHandler = (
     });
   }
 
+  if (err.message?.startsWith('File type')) {
+    return res.status(400).json({
+      status: 'error',
+      message: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // Handle database errors
   if ((err as any).code === 'ER_DUP_ENTRY') {
     return res.status(409).json({

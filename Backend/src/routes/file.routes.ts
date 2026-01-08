@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import path from 'path';
 import * as FileController from '../controllers/file.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
@@ -17,6 +18,9 @@ const upload = multer({
       'image/png',
       'image/gif',
       'application/pdf',
+      'application/x-pdf',
+      'application/acrobat',
+      'application/vnd.pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
@@ -28,6 +32,14 @@ const upload = multer({
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
+      // Some clients send octet-stream for PDF uploads; allow by extension.
+      if (file.mimetype === 'application/octet-stream') {
+        const extension = path.extname(file.originalname).toLowerCase();
+        if (extension === '.pdf') {
+          cb(null, true);
+          return;
+        }
+      }
       cb(new Error(`File type ${file.mimetype} not allowed`));
     }
   },
