@@ -28,6 +28,31 @@ import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
 import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
+
+const FormSection = ({ title, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography
+      variant="subtitle1"
+      fontWeight={600}
+      color="primary"
+      sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
+    >
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
 
 const OrderEdit = () => {
   const { id } = useParams();
@@ -36,6 +61,8 @@ const OrderEdit = () => {
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderFiles, setOrderFiles] = useState([]);
+  const [newFiles, setNewFiles] = useState([]);
 
   const [formData, setFormData] = useState({
     order_type: '',
@@ -74,8 +101,23 @@ const OrderEdit = () => {
         });
         const orderData = response?.data || null;
 
+        let filesData = [];
+        try {
+          const filesResponse = await apiService({
+            method: HttpMethod.GET,
+            endPoint: `/files/orders/${id}`,
+            token,
+          });
+          filesData = filesResponse?.data || [];
+        } catch (fileError) {
+          const message =
+            fileError?.apiMessage || fileError?.message || 'Failed to load order files';
+          toast.error(message);
+        }
+
         if (isMounted) {
           setOrder(orderData);
+          setOrderFiles(filesData);
           if (orderData) {
             setFormData({
               order_type: orderData.order_type || '',
@@ -134,6 +176,50 @@ const OrderEdit = () => {
       ...prev,
       [name]: typeof value === 'string' ? value.split(',') : value,
     }));
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setNewFiles(selectedFiles);
+  };
+
+  const handleDownload = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -202,7 +288,57 @@ const OrderEdit = () => {
         return;
       }
 
-      toast.success(response?.message || 'Order updated successfully');
+      if (newFiles.length > 0) {
+        const uploadResults = await Promise.all(
+          newFiles.map(async (file) => {
+            const data = new FormData();
+            data.append('file', file);
+            const uploadResponse = await fetch(
+              `${API_BASE_URL}/files/orders/${id}/upload`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                body: data,
+              }
+            );
+
+            let errorMessage = null;
+            if (!uploadResponse.ok) {
+              try {
+                const payload = await uploadResponse.json();
+                errorMessage = payload?.message || null;
+              } catch (err) {
+                errorMessage = null;
+              }
+            }
+
+            return {
+              name: file.name,
+              ok: uploadResponse.ok,
+              message: errorMessage,
+            };
+          })
+        );
+
+        const failedUploads = uploadResults.filter((result) => !result.ok);
+        if (failedUploads.length > 0) {
+          const failedNames = failedUploads.map((result) => result.name).join(', ');
+          const failureMessage = failedUploads.find((result) => result.message)?.message;
+          toast.error(
+            failureMessage
+              ? `Order updated but upload failed: ${failureMessage}`
+              : `Order updated but some files failed to upload: ${failedNames}`
+          );
+        } else {
+          toast.success('Order updated and files uploaded successfully');
+        }
+      } else {
+        toast.success(response?.message || 'Order updated successfully');
+      }
+
+      setNewFiles([]);
       navigate(`/orders/${id}`);
     } catch (error) {
       const message = error?.apiMessage || error?.message || 'Failed to update order';
@@ -211,31 +347,6 @@ const OrderEdit = () => {
       setIsSubmitting(false);
     }
   };
-
-  // Section wrapper component for consistent styling
-  const FormSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        fontWeight={600}
-        color="primary"
-        sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
 
   return (
     <Box>
@@ -484,8 +595,28 @@ const OrderEdit = () => {
                   }}
                 >
                   Click to Upload Files
-                  <input type="file" hidden multiple />
+                  <input type="file" hidden multiple onChange={handleFileChange} />
                 </Button>
+                {newFiles.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {newFiles.map((file) => (
+                      <Chip key={file.name} label={file.name} size="small" />
+                    ))}
+                  </Box>
+                )}
+                {orderFiles.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {orderFiles.map((file) => (
+                      <Chip
+                        key={file.id}
+                        label={file.original_name}
+                        size="small"
+                        onClick={() => handleDownload(file)}
+                        sx={{ cursor: 'pointer' }}
+                      />
+                    ))}
+                  </Box>
+                )}
 
                 <FormControlLabel
                   control={
