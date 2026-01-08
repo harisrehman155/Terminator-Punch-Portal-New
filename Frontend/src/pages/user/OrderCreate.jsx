@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -26,6 +27,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
+import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const FormSection = ({ title, children }) => (
   <Paper
@@ -53,6 +56,7 @@ const FormSection = ({ title, children }) => (
 
 const OrderCreate = () => {
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [formData, setFormData] = useState({
     order_type: '',
     design_name: '',
@@ -67,6 +71,10 @@ const OrderCreate = () => {
     instruction: '',
     is_urgent: false,
   });
+  const [files, setFiles] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,14 +91,98 @@ const OrderCreate = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
     if (!formData.order_type || !formData.design_name || !formData.width || !formData.height) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success('Order created successfully');
-    navigate('/orders');
+    if (
+      (formData.order_type === 'DIGITIZING' || formData.order_type === 'PATCHES') &&
+      (!formData.number_of_colors || !formData.fabric)
+    ) {
+      toast.error('Please add number of colors and fabric');
+      return;
+    }
+    if (formData.order_type === 'VECTOR' && !formData.color_type) {
+      toast.error('Please add color type');
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to create an order');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        ...formData,
+        width: formData.width ? parseFloat(formData.width) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        number_of_colors: formData.number_of_colors
+          ? parseInt(formData.number_of_colors, 10)
+          : null,
+        is_urgent: formData.is_urgent ? 1 : 0,
+      };
+
+      const response = await apiService({
+        method: HttpMethod.POST,
+        endPoint: '/orders',
+        data: payload,
+        token,
+      });
+
+      const isSuccess =
+        response?.success === true ||
+        response?.status === 'success';
+
+      if (!isSuccess) {
+        toast.error(response?.message || 'Failed to create order');
+        return;
+      }
+
+      const orderId = response?.data?.id;
+
+      if (orderId && files.length > 0) {
+        const uploadResults = await Promise.all(
+          files.map((file) => {
+            const data = new FormData();
+            data.append('file', file);
+            return fetch(`${API_BASE_URL}/files/orders/${orderId}/upload`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              body: data,
+            });
+          })
+        );
+
+        const failedUploads = uploadResults.filter((result) => !result.ok);
+        if (failedUploads.length > 0) {
+          toast.error('Order created but some files failed to upload');
+          navigate('/orders');
+          return;
+        }
+      }
+
+      toast.success(response?.message || 'Order created successfully');
+      navigate('/orders');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to create order';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -193,7 +285,7 @@ const OrderCreate = () => {
             </FormSection>
 
             {/* Conditional Fields based on Order Type */}
-            {formData.order_type === 'DIGITIZING' && (
+            {(formData.order_type === 'DIGITIZING' || formData.order_type === 'PATCHES') && (
               <FormSection title="Digitizing Details">
                 <Box
                   sx={{
@@ -212,14 +304,21 @@ const OrderCreate = () => {
                     inputProps={{ min: '0' }}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Fabric"
-                    name="fabric"
-                    value={formData.fabric}
-                    onChange={handleChange}
-                    placeholder="e.g., Cotton, Polyester"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Fabric</InputLabel>
+                    <Select
+                      name="fabric"
+                      value={formData.fabric}
+                      onChange={handleChange}
+                      label="Fabric"
+                    >
+                      {fabricOptions.map((fabric) => (
+                        <MenuItem key={fabric} value={fabric}>
+                          {fabric}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Box>
               </FormSection>
             )}
@@ -325,8 +424,15 @@ const OrderCreate = () => {
                   }}
                 >
                   Click to Upload Files
-                  <input type="file" hidden multiple />
+                  <input type="file" hidden multiple onChange={handleFileChange} />
                 </Button>
+                {files.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {files.map((file) => (
+                      <Chip key={file.name} label={file.name} size="small" />
+                    ))}
+                  </Box>
+                )}
 
                 <FormControlLabel
                   control={
@@ -388,8 +494,9 @@ const OrderCreate = () => {
                 type="submit"
                 variant="contained"
                 sx={{ minWidth: 140 }}
+                disabled={isSubmitting}
               >
-                Create Order
+                {isSubmitting ? 'Creating...' : 'Create Order'}
               </Button>
             </Box>
           </Box>

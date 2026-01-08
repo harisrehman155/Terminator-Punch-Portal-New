@@ -1,6 +1,7 @@
 import { query, queryOne } from '../config/database';
 import { DatabaseError, NotFoundError } from '../utils/errors';
 import { generateOrderNumber } from '../utils/helpers';
+import { getLookupId } from '../utils/lookup.helper';
 import {
   Order,
   OrderCreateInput,
@@ -25,6 +26,22 @@ export const create = async (
     // Generate unique order number
     const orderNo = generateOrderNumber();
 
+    // Get lookup IDs for order type, status, and unit
+    const serviceTypeId = await getLookupId('order_type', orderData.order_type);
+    if (!serviceTypeId) {
+      throw new DatabaseError('Invalid order type');
+    }
+
+    const statusId = await getLookupId('order_status', 'IN_PROGRESS');
+    if (!statusId) {
+      throw new DatabaseError('IN_PROGRESS status not found in lookup table');
+    }
+
+    let unitId: number | null = null;
+    if (orderData.unit) {
+      unitId = await getLookupId('unit', orderData.unit);
+    }
+
     // Prepare JSON fields
     const placement = orderData.placement
       ? JSON.stringify(orderData.placement)
@@ -35,18 +52,19 @@ export const create = async (
 
     const result: any = await query(
       `INSERT INTO orders (
-        user_id, order_no, order_type, status, design_name,
-        height, width, unit, number_of_colors, fabric, color_type,
+        user_id, order_no, service_type_id, status_id, design_name,
+        height, width, unit_id, number_of_colors, fabric, color_type,
         placement, required_format, instruction, is_urgent
-      ) VALUES (?, ?, ?, 'IN_PROGRESS', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         orderNo,
-        orderData.order_type,
+        serviceTypeId,
+        statusId,
         orderData.design_name,
         orderData.height || null,
         orderData.width || null,
-        orderData.unit || 'inch',
+        unitId,
         orderData.number_of_colors || null,
         orderData.fabric || null,
         orderData.color_type || null,
@@ -79,7 +97,16 @@ export const create = async (
 export const findById = async (orderId: number): Promise<Order | null> => {
   try {
     const order = await queryOne<any>(
-      'SELECT * FROM orders WHERE id = ?',
+      `SELECT
+        o.*,
+        st.lookup_value as order_type,
+        s.lookup_value as status,
+        u.lookup_value as unit
+      FROM orders o
+      LEFT JOIN lookups st ON o.service_type_id = st.id
+      LEFT JOIN lookups s ON o.status_id = s.id
+      LEFT JOIN lookups u ON o.unit_id = u.id
+      WHERE o.id = ?`,
       [orderId]
     );
 
@@ -101,7 +128,16 @@ export const findByOrderNo = async (
 ): Promise<Order | null> => {
   try {
     const order = await queryOne<any>(
-      'SELECT * FROM orders WHERE order_no = ?',
+      `SELECT
+        o.*,
+        st.lookup_value as order_type,
+        s.lookup_value as status,
+        u.lookup_value as unit
+      FROM orders o
+      LEFT JOIN lookups st ON o.service_type_id = st.id
+      LEFT JOIN lookups s ON o.status_id = s.id
+      LEFT JOIN lookups u ON o.unit_id = u.id
+      WHERE o.order_no = ?`,
       [orderNo]
     );
 
@@ -121,7 +157,16 @@ export const findByOrderNo = async (
 export const findByUserId = async (userId: number): Promise<Order[]> => {
   try {
     const orders = await query<any[]>(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC',
+      `SELECT
+        o.*,
+        st.lookup_value as order_type,
+        s.lookup_value as status,
+        u.lookup_value as unit
+      FROM orders o
+      LEFT JOIN lookups st ON o.service_type_id = st.id
+      LEFT JOIN lookups s ON o.status_id = s.id
+      LEFT JOIN lookups u ON o.unit_id = u.id
+      WHERE o.user_id = ? ORDER BY o.created_at DESC`,
       [userId]
     );
 
@@ -139,10 +184,20 @@ export const findByIdWithUser = async (
 ): Promise<OrderWithUser | null> => {
   try {
     const order = await queryOne<any>(
-      `SELECT o.*, u.name as user_name, u.email as user_email, u.company as user_company
-       FROM orders o
-       INNER JOIN users u ON o.user_id = u.id
-       WHERE o.id = ?`,
+      `SELECT
+        o.*,
+        st.lookup_value as order_type,
+        s.lookup_value as status,
+        u2.lookup_value as unit,
+        u.name as user_name,
+        u.email as user_email,
+        u.company as user_company
+      FROM orders o
+      LEFT JOIN lookups st ON o.service_type_id = st.id
+      LEFT JOIN lookups s ON o.status_id = s.id
+      LEFT JOIN lookups u2 ON o.unit_id = u2.id
+      INNER JOIN users u ON o.user_id = u.id
+      WHERE o.id = ?`,
       [orderId]
     );
 
@@ -163,48 +218,57 @@ export const findAll = async (
   filters: OrderListFilters = {}
 ): Promise<Order[]> => {
   try {
-    let sql = 'SELECT * FROM orders WHERE 1=1';
+    let sql = `SELECT
+      o.*,
+      st.lookup_value as order_type,
+      s.lookup_value as status,
+      u.lookup_value as unit
+    FROM orders o
+    LEFT JOIN lookups st ON o.service_type_id = st.id
+    LEFT JOIN lookups s ON o.status_id = s.id
+    LEFT JOIN lookups u ON o.unit_id = u.id
+    WHERE 1=1`;
     const params: any[] = [];
 
     // Apply filters
     if (filters.user_id) {
-      sql += ' AND user_id = ?';
+      sql += ' AND o.user_id = ?';
       params.push(filters.user_id);
     }
 
     if (filters.order_type) {
-      sql += ' AND order_type = ?';
+      sql += ' AND st.lookup_value = ?';
       params.push(filters.order_type);
     }
 
     if (filters.status) {
-      sql += ' AND status = ?';
+      sql += ' AND s.lookup_value = ?';
       params.push(filters.status);
     }
 
     if (filters.is_urgent !== undefined) {
-      sql += ' AND is_urgent = ?';
+      sql += ' AND o.is_urgent = ?';
       params.push(filters.is_urgent);
     }
 
     if (filters.search) {
-      sql += ' AND (order_no LIKE ? OR design_name LIKE ?)';
+      sql += ' AND (o.order_no LIKE ? OR o.design_name LIKE ?)';
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm);
     }
 
     if (filters.from_date) {
-      sql += ' AND created_at >= ?';
+      sql += ' AND o.created_at >= ?';
       params.push(filters.from_date);
     }
 
     if (filters.to_date) {
-      sql += ' AND created_at <= ?';
+      sql += ' AND o.created_at <= ?';
       params.push(filters.to_date);
     }
 
     // Order by created_at DESC
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY o.created_at DESC';
 
     // Pagination
     if (filters.limit) {
@@ -232,8 +296,18 @@ export const findAllWithUser = async (
   filters: OrderListFilters = {}
 ): Promise<OrderWithUser[]> => {
   try {
-    let sql = `SELECT o.*, u.name as user_name, u.email as user_email, u.company as user_company
+    let sql = `SELECT
+               o.*,
+               st.lookup_value as order_type,
+               s.lookup_value as status,
+               u2.lookup_value as unit,
+               u.name as user_name,
+               u.email as user_email,
+               u.company as user_company
                FROM orders o
+               LEFT JOIN lookups st ON o.service_type_id = st.id
+               LEFT JOIN lookups s ON o.status_id = s.id
+               LEFT JOIN lookups u2 ON o.unit_id = u2.id
                INNER JOIN users u ON o.user_id = u.id
                WHERE 1=1`;
     const params: any[] = [];
@@ -245,12 +319,12 @@ export const findAllWithUser = async (
     }
 
     if (filters.order_type) {
-      sql += ' AND o.order_type = ?';
+      sql += ' AND st.lookup_value = ?';
       params.push(filters.order_type);
     }
 
     if (filters.status) {
-      sql += ' AND o.status = ?';
+      sql += ' AND s.lookup_value = ?';
       params.push(filters.status);
     }
 
@@ -324,8 +398,11 @@ export const update = async (
     }
 
     if (updateData.unit !== undefined) {
-      updates.push('unit = ?');
-      params.push(updateData.unit);
+      const unitId = updateData.unit
+        ? await getLookupId('unit', updateData.unit)
+        : null;
+      updates.push('unit_id = ?');
+      params.push(unitId);
     }
 
     if (updateData.number_of_colors !== undefined) {
@@ -364,8 +441,12 @@ export const update = async (
     }
 
     if (updateData.status !== undefined) {
-      updates.push('status = ?');
-      params.push(updateData.status);
+      const statusId = await getLookupId('order_status', updateData.status);
+      if (!statusId) {
+        throw new DatabaseError('Invalid order status');
+      }
+      updates.push('status_id = ?');
+      params.push(statusId);
     }
 
     if (updates.length === 0) {
@@ -403,10 +484,15 @@ export const updateStatus = async (
   status: string
 ): Promise<Order> => {
   try {
-    await query('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', [
-      status,
-      orderId,
-    ]);
+    const statusId = await getLookupId('order_status', status);
+    if (!statusId) {
+      throw new DatabaseError('Invalid order status');
+    }
+
+    await query(
+      'UPDATE orders SET status_id = ?, updated_at = NOW() WHERE id = ?',
+      [statusId, orderId]
+    );
 
     const order = await findById(orderId);
     if (!order) {
@@ -427,9 +513,14 @@ export const updateStatus = async (
  */
 export const softDelete = async (orderId: number): Promise<void> => {
   try {
+    const statusId = await getLookupId('order_status', 'CANCELLED');
+    if (!statusId) {
+      throw new DatabaseError('Invalid order status');
+    }
+
     await query(
-      'UPDATE orders SET status = "CANCELLED", updated_at = NOW() WHERE id = ?',
-      [orderId]
+      'UPDATE orders SET status_id = ?, updated_at = NOW() WHERE id = ?',
+      [statusId, orderId]
     );
   } catch (error) {
     throw new DatabaseError('Failed to delete order');
@@ -452,42 +543,46 @@ export const hardDelete = async (orderId: number): Promise<void> => {
  */
 export const count = async (filters: OrderListFilters = {}): Promise<number> => {
   try {
-    let sql = 'SELECT COUNT(*) as count FROM orders WHERE 1=1';
+    let sql = `SELECT COUNT(*) as count
+      FROM orders o
+      LEFT JOIN lookups st ON o.service_type_id = st.id
+      LEFT JOIN lookups s ON o.status_id = s.id
+      WHERE 1=1`;
     const params: any[] = [];
 
     if (filters.user_id) {
-      sql += ' AND user_id = ?';
+      sql += ' AND o.user_id = ?';
       params.push(filters.user_id);
     }
 
     if (filters.order_type) {
-      sql += ' AND order_type = ?';
+      sql += ' AND st.lookup_value = ?';
       params.push(filters.order_type);
     }
 
     if (filters.status) {
-      sql += ' AND status = ?';
+      sql += ' AND s.lookup_value = ?';
       params.push(filters.status);
     }
 
     if (filters.is_urgent !== undefined) {
-      sql += ' AND is_urgent = ?';
+      sql += ' AND o.is_urgent = ?';
       params.push(filters.is_urgent);
     }
 
     if (filters.search) {
-      sql += ' AND (order_no LIKE ? OR design_name LIKE ?)';
+      sql += ' AND (o.order_no LIKE ? OR o.design_name LIKE ?)';
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm);
     }
 
     if (filters.from_date) {
-      sql += ' AND created_at >= ?';
+      sql += ' AND o.created_at >= ?';
       params.push(filters.from_date);
     }
 
     if (filters.to_date) {
-      sql += ' AND created_at <= ?';
+      sql += ' AND o.created_at <= ?';
       params.push(filters.to_date);
     }
 
@@ -505,7 +600,7 @@ export const toOrderResponse = (order: Order): OrderResponse => {
   return {
     id: order.id,
     order_no: order.order_no,
-    order_type: order.order_type,
+    order_type: order.order_type ?? order.service_type,
     status: order.status,
     design_name: order.design_name,
     height: order.height,

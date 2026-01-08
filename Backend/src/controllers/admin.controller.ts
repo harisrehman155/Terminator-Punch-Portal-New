@@ -114,10 +114,16 @@ export const getSystemStats = asyncHandler(async (req: Request, res: Response) =
     'SELECT COUNT(*) as count FROM orders'
   );
   const pendingOrdersResult: any = await UserModel.query(
-    'SELECT COUNT(*) as count FROM orders WHERE status = "IN_PROGRESS"'
+    `SELECT COUNT(*) as count
+     FROM orders o
+     LEFT JOIN lookups l ON o.status_id = l.id
+     WHERE l.lookup_value = "IN_PROGRESS"`
   );
   const completedOrdersResult: any = await UserModel.query(
-    'SELECT COUNT(*) as count FROM orders WHERE status = "COMPLETED"'
+    `SELECT COUNT(*) as count
+     FROM orders o
+     LEFT JOIN lookups l ON o.status_id = l.id
+     WHERE l.lookup_value = "COMPLETED"`
   );
 
   // Get quote statistics
