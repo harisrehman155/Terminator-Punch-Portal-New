@@ -150,7 +150,8 @@ const QuotesList = () => {
       field: 'quote_type',
       headerName: 'Type',
       width: 120,
-      valueGetter: (params) => params.row.service_type || params.row.quote_type,
+      valueGetter: (params) =>
+        params?.row?.service_type || params?.row?.quote_type || '',
     },
     {
       field: 'design_name',
