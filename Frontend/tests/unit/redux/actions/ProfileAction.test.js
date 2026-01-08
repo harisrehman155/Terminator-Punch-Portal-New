@@ -1,10 +1,10 @@
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import * as AuthAction from '../AuthAction';
-import { GET_PROFILE, UPDATE_PROFILE, SET_AUTH_LOADING, SET_AUTH_ERROR } from '../../ActionTypes';
+import * as AuthAction from '../../../../src/redux/actions/AuthAction';
+import { GET_PROFILE, UPDATE_PROFILE, SET_AUTH_LOADING, SET_AUTH_ERROR } from '../../../../src/redux/ActionTypes';
 
 // Mock the apiService
-jest.mock('../../../api/ApiService', () => ({
+jest.mock('../../../../src/api/ApiService', () => ({
   __esModule: true,
   default: jest.fn(),
   HttpMethod: {
@@ -15,7 +15,7 @@ jest.mock('../../../api/ApiService', () => ({
   }
 }));
 
-import apiService from '../../../api/ApiService';
+import apiService from '../../../../src/api/ApiService';
 
 const mockStore = configureStore([thunk]);
 const mockedApiService = apiService;

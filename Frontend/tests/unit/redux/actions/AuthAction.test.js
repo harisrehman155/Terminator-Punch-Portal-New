@@ -8,12 +8,12 @@ import {
   verifyOtpUser,
   resetPasswordUser,
   logoutUser
-} from '../AuthAction';
-import apiService, { HttpMethod } from '../../../api/ApiService';
-import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR } from '../../ActionTypes';
+} from '../../../../src/redux/actions/AuthAction';
+import apiService, { HttpMethod } from '../../../../src/api/ApiService';
+import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR } from '../../../../src/redux/ActionTypes';
 
 // Mock apiService
-jest.mock('../../../api/ApiService');
+jest.mock('../../../../src/api/ApiService');
 
 const middlewares = [thunk];
 const mockStore = configureMockStore(middlewares);
