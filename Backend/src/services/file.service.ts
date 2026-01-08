@@ -95,13 +95,15 @@ export const uploadOrderFile = async (
   fs.renameSync(file.path, filePath);
 
   // Create file record in database
+  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
   const fileRecord = await FileModel.create({
-    filename: uniqueFilename,
+    stored_name: uniqueFilename,
     original_name: file.originalname,
     mime_type: file.mimetype,
-    size: file.size,
-    path: filePath,
-    entity_type: 'order',
+    size_bytes: file.size,
+    file_path: filePath,
+    entity_type: 'ORDER',
+    file_role: fileRole,
     entity_id: orderId,
     uploaded_by: userId,
   });
@@ -147,13 +149,15 @@ export const uploadQuoteFile = async (
   fs.renameSync(file.path, filePath);
 
   // Create file record in database
+  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
   const fileRecord = await FileModel.create({
-    filename: uniqueFilename,
+    stored_name: uniqueFilename,
     original_name: file.originalname,
     mime_type: file.mimetype,
-    size: file.size,
-    path: filePath,
-    entity_type: 'quote',
+    size_bytes: file.size,
+    file_path: filePath,
+    entity_type: 'QUOTE',
+    file_role: fileRole,
     entity_id: quoteId,
     uploaded_by: userId,
   });
