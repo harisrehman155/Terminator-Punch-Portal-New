@@ -155,22 +155,47 @@ const OrderCreate = () => {
 
       if (orderId && files.length > 0) {
         const uploadResults = await Promise.all(
-          files.map((file) => {
+          files.map(async (file) => {
             const data = new FormData();
             data.append('file', file);
-            return fetch(`${API_BASE_URL}/files/orders/${orderId}/upload`, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              body: data,
-            });
+            const response = await fetch(
+              `${API_BASE_URL}/files/orders/${orderId}/upload`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                body: data,
+              }
+            );
+
+            let errorMessage = null;
+            if (!response.ok) {
+              try {
+                const payload = await response.json();
+                errorMessage = payload?.message || null;
+              } catch (err) {
+                errorMessage = null;
+              }
+            }
+
+            return {
+              name: file.name,
+              ok: response.ok,
+              message: errorMessage,
+            };
           })
         );
 
         const failedUploads = uploadResults.filter((result) => !result.ok);
         if (failedUploads.length > 0) {
-          toast.error('Order created but some files failed to upload');
+          const failedNames = failedUploads.map((result) => result.name).join(', ');
+          const failureMessage = failedUploads.find((result) => result.message)?.message;
+          toast.error(
+            failureMessage
+              ? `Order created but upload failed: ${failureMessage}`
+              : `Order created but some files failed to upload: ${failedNames}`
+          );
           navigate('/orders');
           return;
         }
