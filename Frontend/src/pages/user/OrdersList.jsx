@@ -1,36 +1,84 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, TextField, MenuItem, Chip, IconButton, Tooltip } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Edit, Delete } from '@mui/icons-material';
+import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyOrders } from '../../data/dummyOrders';
 import { lookups } from '../../data/dummyLookups';
+import apiService, { HttpMethod } from '../../api/ApiService';
 
 const OrdersList = () => {
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  let filteredOrders = dummyOrders;
+  useEffect(() => {
+    let isMounted = true;
 
-  if (statusFilter !== 'all') {
-    filteredOrders = filteredOrders.filter(o => o.status === statusFilter);
-  }
+    const fetchOrders = async () => {
+      if (!token) {
+        return;
+      }
 
-  if (typeFilter !== 'all') {
-    filteredOrders = filteredOrders.filter(o => o.order_type === typeFilter);
-  }
+      setIsLoading(true);
 
-  if (searchText) {
-    filteredOrders = filteredOrders.filter(
-      o =>
-        o.order_no.toLowerCase().includes(searchText.toLowerCase()) ||
-        o.design_name.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: '/orders',
+          token,
+        });
+
+        const list = response?.data?.orders || [];
+        if (isMounted) {
+          setOrders(list);
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load orders';
+        toast.error(message);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchOrders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  const filteredOrders = useMemo(() => {
+    let filtered = orders;
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((order) => order.status === statusFilter);
+    }
+
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter((order) => order.order_type === typeFilter);
+    }
+
+    if (searchText) {
+      const query = searchText.toLowerCase();
+      filtered = filtered.filter(
+        (order) =>
+          order.order_no?.toLowerCase().includes(query) ||
+          order.design_name?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [orders, searchText, statusFilter, typeFilter]);
 
   const columns = [
     {
@@ -77,7 +125,8 @@ const OrdersList = () => {
       field: 'created_at',
       headerName: 'Created',
       width: 180,
-      valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
+      valueFormatter: (params) =>
+        params.value ? new Date(params.value).toLocaleDateString() : '-',
     },
     {
       field: 'actions',
@@ -183,6 +232,7 @@ const OrdersList = () => {
           columns={columns}
           pageSize={10}
           rowsPerPageOptions={[10, 25, 50]}
+          loading={isLoading}
           onRowClick={(params) => navigate(`/orders/${params.row.id}`)}
           sx={{
             '& .MuiDataGrid-row:hover': {
@@ -196,4 +246,3 @@ const OrdersList = () => {
 };
 
 export default OrdersList;
-
