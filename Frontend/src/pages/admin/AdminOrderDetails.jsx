@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -33,10 +34,12 @@ import { dummyOrderHistory } from '../../data/dummyOrderHistory';
 import { lookups } from '../../data/dummyLookups';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const AdminOrderDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [tabValue, setTabValue] = useState(0);
   const [status, setStatus] = useState('');
   const [adminRemarks, setAdminRemarks] = useState('');
@@ -62,6 +65,45 @@ const AdminOrderDetails = () => {
   const handleStatusChange = (e) => {
     setStatus(e.target.value);
     toast.success('Status updated successfully');
+  };
+
+  const handleDownload = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
   };
 
   const DetailSection = ({ title, children }) => (
@@ -250,6 +292,7 @@ const AdminOrderDetails = () => {
                               size="small"
                               startIcon={<Download />}
                               variant="outlined"
+                              onClick={() => handleDownload(file)}
                             >
                               Download
                             </Button>
@@ -325,4 +368,3 @@ const AdminOrderDetails = () => {
 };
 
 export default AdminOrderDetails;
-
