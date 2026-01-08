@@ -200,13 +200,17 @@ const QuoteDetails = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDateTime = (dateString) => {
+    if (!dateString) {
+      return '-';
+    }
+    return new Date(dateString).toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -259,6 +263,29 @@ const QuoteDetails = () => {
     quote.width && quote.height
       ? `${quote.width} x ${quote.height} ${quote.unit || ''}`.trim()
       : '-';
+  const createdValue =
+    quote.created_at ||
+    quote.createdAt ||
+    quote.created ||
+    quote.created_date ||
+    quote.createdDate ||
+    quote.updated_at ||
+    quote.updatedAt ||
+    quote.updated ||
+    quote.updated_date ||
+    quote.updatedDate ||
+    null;
+  const updatedValue =
+    quote.updated_at ||
+    quote.updatedAt ||
+    quote.updated ||
+    quote.updated_date ||
+    quote.updatedDate ||
+    null;
+  const pricingRemarks =
+    quote.remarks ||
+    quote.pricing_history?.[0]?.admin_notes ||
+    '';
 
   return (
     <Box>
@@ -462,9 +489,9 @@ const QuoteDetails = () => {
                 >
                   {quote.currency || 'USD'} {Number(quote.price).toFixed(2)}
                 </Typography>
-                {quote.pricing_history?.length > 0 && (
+                {pricingRemarks && (
                   <Typography variant="body2" color="text.secondary">
-                    {quote.pricing_history[0].admin_notes}
+                    {pricingRemarks}
                   </Typography>
                 )}
 
@@ -569,6 +596,29 @@ const QuoteDetails = () => {
           </CardContent>
         </Card>
 
+        <Card sx={{ mb: 3, boxShadow: 3 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  Created
+                </Typography>
+                <Typography variant="body2" fontWeight={500}>
+                  {formatDateTime(createdValue)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  Last Updated
+                </Typography>
+                <Typography variant="body2" fontWeight={500}>
+                  {formatDateTime(updatedValue)}
+                </Typography>
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+
         {/* Conversation / Remarks History */}
         {quote.remarks_history?.length > 0 && (
           <Card sx={{ mb: 3, boxShadow: 3 }}>
@@ -623,7 +673,7 @@ const QuoteDetails = () => {
                         {remark.created_by}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        • {formatDate(remark.created_at)}
+                        • {formatDateTime(remark.created_at)}
                       </Typography>
                     </Box>
                     <Typography variant="body2" sx={{ ml: 4.5 }}>
@@ -686,7 +736,7 @@ const QuoteDetails = () => {
                       </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      {formatDate(price.created_at)}
+                      {formatDateTime(price.created_at)}
                     </Typography>
                   </Box>
                 ))}
