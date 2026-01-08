@@ -300,7 +300,7 @@ export const deleteOrder = asyncHandler(async (req: Request, res: Response) => {
     throw new ValidationError('Invalid order ID');
   }
 
-  await OrderService.deleteOrder(orderId, req.user.role);
+  await OrderService.deleteOrder(orderId, req.user.userId, req.user.role);
 
   return successResponse(res, 'Order deleted successfully');
 });
