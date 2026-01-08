@@ -11,6 +11,21 @@ import {
   QuoteResponse,
 } from '../types/quote.types';
 
+const resolveLookupId = async (
+  primaryType: string,
+  fallbackType: string | null,
+  value: string
+): Promise<number | null> => {
+  const primary = await getLookupId(primaryType, value);
+  if (primary !== null) {
+    return primary;
+  }
+  if (!fallbackType) {
+    return null;
+  }
+  return getLookupId(fallbackType, value);
+};
+
 /**
  * Quote Model - Database operations for quotes
  */
@@ -27,12 +42,16 @@ export const create = async (
     const quoteNo = generateQuoteNumber();
 
     // Get lookup IDs for service_type, status, and unit
-    const serviceTypeId = await getLookupId('order_type', quoteData.quote_type);
+    const serviceTypeId = await resolveLookupId(
+      'service_type',
+      'order_type',
+      quoteData.quote_type
+    );
     if (!serviceTypeId) {
       throw new DatabaseError('Invalid quote type');
     }
 
-    const statusId = await getLookupId('order_status', 'PENDING');
+    const statusId = await resolveLookupId('quote_status', 'order_status', 'PENDING');
     if (!statusId) {
       throw new DatabaseError('PENDING status not found in lookup table');
     }
@@ -40,7 +59,11 @@ export const create = async (
     // Get unit_id if unit is provided
     let unitId: number | null = null;
     if (quoteData.unit) {
-      unitId = await getLookupId('unit', quoteData.unit);
+      unitId = await resolveLookupId(
+        'measurement_unit',
+        'unit',
+        quoteData.unit
+      );
     }
 
     // Prepare JSON fields
@@ -302,7 +325,9 @@ export const update = async (
     }
 
     if (updateData.unit !== undefined) {
-      const unitId = await getLookupId('unit', updateData.unit);
+      const unitId = updateData.unit
+        ? await resolveLookupId('measurement_unit', 'unit', updateData.unit)
+        : null;
       updates.push('unit_id = ?');
       params.push(unitId);
     }
@@ -386,7 +411,7 @@ export const updatePricing = async (
     );
 
     // Update status to PRICED
-    const pricedStatusId = await getLookupId('order_status', 'PRICED');
+    const pricedStatusId = await resolveLookupId('quote_status', 'order_status', 'PRICED');
     if (pricedStatusId) {
       await query(
         'UPDATE quotes SET status_id = ? WHERE id = ?',
@@ -414,7 +439,11 @@ export const convertToOrder = async (
 ): Promise<void> => {
   try {
     // Update quote status to CONVERTED and link to order
-    const convertedStatusId = await getLookupId('order_status', 'CONVERTED');
+    const convertedStatusId = await resolveLookupId(
+      'quote_status',
+      'order_status',
+      'CONVERTED'
+    );
     if (convertedStatusId) {
       await query(
         'UPDATE quotes SET status_id = ?, converted_order_id = ?, updated_at = NOW() WHERE id = ?',

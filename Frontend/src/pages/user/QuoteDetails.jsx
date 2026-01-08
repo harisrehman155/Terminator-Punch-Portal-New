@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -6,6 +7,12 @@ import {
   Typography,
   Chip,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -14,15 +21,13 @@ import {
   Paper,
   alpha,
   Stack,
-  TextField,
   Avatar,
 } from '@mui/material';
 import {
   Edit,
   Delete,
   ShoppingCart,
-  Refresh,
-  Close,
+  Download,
   Person,
   AdminPanelSettings,
   AttachMoney,
@@ -30,53 +35,169 @@ import {
 } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyQuotes } from '../../data/dummyQuotes';
 import { toast } from 'react-toastify';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const QuoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [revisionDialogOpen, setRevisionDialogOpen] = useState(false);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [revisionNote, setRevisionNote] = useState('');
-  const [rejectReason, setRejectReason] = useState('');
+  const [quote, setQuote] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
-  const quote = dummyQuotes.find((q) => q.id === parseInt(id));
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchQuote = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/quotes/${id}`,
+          token,
+        });
+        const quoteData = response?.data || null;
+
+        const filesResponse = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/files/quotes/${id}`,
+          token,
+        });
+
+        if (isMounted) {
+          setQuote(quoteData);
+          setFiles(filesResponse?.data || []);
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load quote';
+        toast.error(message);
+        if (isMounted) {
+          setQuote(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchQuote();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, token]);
+
+  if (isLoading) {
+    return <Typography>Loading quote...</Typography>;
+  }
 
   if (!quote) {
     return <Typography>Quote not found</Typography>;
   }
 
-  const handleConvertToOrder = () => {
-    toast.success('Quote converted to order successfully!');
-    setConvertDialogOpen(false);
-    navigate('/orders');
-  };
-
-  const handleRequestRevision = () => {
-    if (!revisionNote.trim()) {
-      toast.error('Please provide a note for the revision request');
+  const handleConvertToOrder = async () => {
+    if (!token) {
+      toast.error('Please log in again to convert the quote');
       return;
     }
-    toast.success('Revision request sent to admin');
-    setRevisionDialogOpen(false);
-    setRevisionNote('');
+
+    setIsConverting(true);
+
+    try {
+      const response = await apiService({
+        method: HttpMethod.POST,
+        endPoint: `/quotes/${id}/convert`,
+        token,
+      });
+
+      const orderId = response?.data?.order?.id;
+      toast.success(response?.message || 'Quote converted to order successfully');
+      setConvertDialogOpen(false);
+      navigate(orderId ? `/orders/${orderId}` : '/orders');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to convert quote';
+      toast.error(message);
+    } finally {
+      setIsConverting(false);
+    }
   };
 
-  const handleRejectQuote = () => {
-    toast.success('Quote rejected');
-    setRejectDialogOpen(false);
-    setRejectReason('');
-    navigate('/quotes');
+  const handleDelete = async () => {
+    if (!token) {
+      toast.error('Please log in again to delete the quote');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/quotes/${id}`,
+        token,
+      });
+      toast.success('Quote deleted successfully');
+      setDeleteDialogOpen(false);
+      navigate('/quotes');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete quote';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const handleDelete = () => {
-    toast.success('Quote deleted successfully');
-    setDeleteDialogOpen(false);
-    navigate('/quotes');
+  const handleDownload = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -117,7 +238,7 @@ const QuoteDetails = () => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
         {label}
       </Typography>
-      {value && (
+      {value !== undefined && value !== null && value !== '' && (
         <Typography variant="body1" fontWeight={500}>
           {value}
         </Typography>
@@ -131,6 +252,13 @@ const QuoteDetails = () => {
   const isRevisionRequested = quote.status === 'REVISION_REQUESTED';
   const isConverted = quote.status === 'CONVERTED';
   const isRejected = quote.status === 'REJECTED';
+
+  const placements = quote.placement || [];
+  const formats = quote.required_format || [];
+  const sizeLabel =
+    quote.width && quote.height
+      ? `${quote.width} x ${quote.height} ${quote.unit || ''}`.trim()
+      : '-';
 
   return (
     <Box>
@@ -205,44 +333,100 @@ const QuoteDetails = () => {
                   gap: 3,
                 }}
               >
-                <DetailRow label="Quote Type" value={quote.quote_type} />
-                <DetailRow
-                  label="Size"
-                  value={`${quote.width} x ${quote.height} ${quote.unit}`}
-                />
+                <DetailRow label="Quote Type" value={quote.service_type || quote.quote_type} />
+                <DetailRow label="Size" value={sizeLabel} />
                 {quote.number_of_colors && (
                   <DetailRow label="Number of Colors" value={quote.number_of_colors} />
                 )}
                 {quote.fabric && <DetailRow label="Fabric" value={quote.fabric} />}
+                {quote.color_type && <DetailRow label="Color Type" value={quote.color_type} />}
                 <DetailRow label="Placement">
                   <Box display="flex" gap={1} flexWrap="wrap" mt={0.5}>
-                    {quote.placement.map((place) => (
-                      <Chip key={place} label={place} size="small" />
-                    ))}
+                    {placements.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Not specified
+                      </Typography>
+                    ) : (
+                      placements.map((place) => (
+                        <Chip key={place} label={place} size="small" />
+                      ))
+                    )}
                   </Box>
                 </DetailRow>
                 <DetailRow label="Required Format">
                   <Box display="flex" gap={1} flexWrap="wrap" mt={0.5}>
-                    {quote.required_format.map((format) => (
-                      <Chip key={format} label={format} size="small" />
-                    ))}
+                    {formats.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Not specified
+                      </Typography>
+                    ) : (
+                      formats.map((format) => (
+                        <Chip key={format} label={format} size="small" />
+                      ))
+                    )}
                   </Box>
                 </DetailRow>
               </Box>
-              {quote.instruction && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                    Instructions
-                  </Typography>
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {quote.instruction}
-                  </Typography>
-                </Box>
-              )}
-            </DetailSection>
+            {quote.instruction && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  Instructions
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {quote.instruction}
+                </Typography>
+              </Box>
+            )}
+          </DetailSection>
 
-            {/* Current Pricing - Only show if priced */}
-            {quote.current_price && (
+          <DetailSection title={`Files (${files.length})`} icon={null}>
+            {files.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No files uploaded yet.
+              </Typography>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>File Name</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell>Size</TableCell>
+                      <TableCell>Role</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {files.map((file) => (
+                      <TableRow key={file.id}>
+                        <TableCell>{file.original_name}</TableCell>
+                        <TableCell>{file.mime_type}</TableCell>
+                        <TableCell>
+                          {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {file.file_role ? file.file_role.replace('_', ' ') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            startIcon={<Download />}
+                            variant="outlined"
+                            onClick={() => handleDownload(file)}
+                          >
+                            Download
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </DetailSection>
+
+          {/* Current Pricing - Only show if priced */}
+          {quote.price && (
               <Paper
                 elevation={0}
                 sx={{
@@ -276,7 +460,7 @@ const QuoteDetails = () => {
                   color={canTakeAction ? 'success.main' : 'text.primary'}
                   mb={1}
                 >
-                  {quote.currency} {quote.current_price.toFixed(2)}
+                  {quote.currency || 'USD'} {Number(quote.price).toFixed(2)}
                 </Typography>
                 {quote.pricing_history?.length > 0 && (
                   <Typography variant="body2" color="text.secondary">
@@ -285,34 +469,18 @@ const QuoteDetails = () => {
                 )}
 
                 {/* Action Buttons - Only show when PRICED */}
-                {canTakeAction && (
-                  <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      startIcon={<ShoppingCart />}
-                      onClick={() => setConvertDialogOpen(true)}
-                    >
-                      Accept & Convert to Order
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      startIcon={<Refresh />}
-                      onClick={() => setRevisionDialogOpen(true)}
-                    >
-                      Request Revision
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<Close />}
-                      onClick={() => setRejectDialogOpen(true)}
-                    >
-                      Reject Quote
-                    </Button>
-                  </Box>
-                )}
+                  {canTakeAction && (
+                    <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<ShoppingCart />}
+                        onClick={() => setConvertDialogOpen(true)}
+                      >
+                        Accept & Convert to Order
+                      </Button>
+                    </Box>
+                  )}
               </Paper>
             )}
 
@@ -540,7 +708,7 @@ const QuoteDetails = () => {
           <DialogContentText>
             You are about to accept the quoted price of{' '}
             <strong>
-              {quote.currency} {quote.current_price?.toFixed(2)}
+              {quote.currency || 'USD'} {Number(quote.price || 0).toFixed(2)}
             </strong>{' '}
             and convert this quote to an order.
           </DialogContentText>
@@ -555,79 +723,9 @@ const QuoteDetails = () => {
             variant="contained"
             color="success"
             startIcon={<ShoppingCart />}
+            disabled={isConverting}
           >
-            Convert to Order
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Request Revision Dialog */}
-      <Dialog
-        open={revisionDialogOpen}
-        onClose={() => setRevisionDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Request Revision</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Please provide details about what you'd like to discuss or revise
-            (pricing, design changes, etc.)
-          </DialogContentText>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Your Message"
-            placeholder="e.g., Can we discuss a lower price for bulk orders? I'd like to request a discount..."
-            value={revisionNote}
-            onChange={(e) => setRevisionNote(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevisionDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleRequestRevision}
-            variant="contained"
-            startIcon={<Refresh />}
-          >
-            Send Revision Request
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Reject Quote Dialog */}
-      <Dialog
-        open={rejectDialogOpen}
-        onClose={() => setRejectDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Reject Quote</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Are you sure you want to reject this quote? You can optionally provide a
-            reason.
-          </DialogContentText>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            label="Reason (Optional)"
-            placeholder="e.g., Price is too high, found a better alternative..."
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleRejectQuote}
-            variant="contained"
-            color="error"
-            startIcon={<Close />}
-          >
-            Reject Quote
+            {isConverting ? 'Converting...' : 'Convert to Order'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -641,9 +739,16 @@ const QuoteDetails = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
-            Delete
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

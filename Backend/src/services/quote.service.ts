@@ -282,16 +282,19 @@ export const convertQuoteToOrder = async (
  */
 export const deleteQuote = async (
   quoteId: number,
+  userId: number,
   userRole: string
 ): Promise<void> => {
-  if (userRole !== 'ADMIN') {
-    throw new ForbiddenError('Only admins can delete quotes');
-  }
-
   const existingQuote = await QuoteModel.findById(quoteId);
 
   if (!existingQuote) {
     throw new NotFoundError('Quote not found');
+  }
+
+  if (userRole !== 'ADMIN') {
+    if (existingQuote.user_id !== userId) {
+      throw new ForbiddenError('You do not have permission to delete this quote');
+    }
   }
 
   // Cannot delete converted quotes

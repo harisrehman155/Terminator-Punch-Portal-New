@@ -66,8 +66,8 @@ router.post('/:id/convert', authenticate, QuoteController.convertQuoteToOrder);
 
 /**
  * DELETE /api/quotes/:id
- * Delete quote (Admin only)
+ * Delete quote (User can delete own, Admin can delete all)
  */
-router.delete('/:id', authenticate, requireAdmin, QuoteController.deleteQuote);
+router.delete('/:id', authenticate, QuoteController.deleteQuote);
 
 export default router;
