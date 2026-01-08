@@ -27,6 +27,30 @@ import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
 
+const FormSection = ({ title, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography
+      variant="subtitle1"
+      fontWeight={600}
+      color="primary"
+      sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
+    >
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
+
 const OrderCreate = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -68,31 +92,6 @@ const OrderCreate = () => {
     toast.success('Order created successfully');
     navigate('/orders');
   };
-
-  // Section wrapper component for consistent styling
-  const FormSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        fontWeight={600}
-        color="primary"
-        sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
 
   return (
     <Box>
