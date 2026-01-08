@@ -15,7 +15,7 @@ Order Management System frontend for Digitizing, Vector Art, and Embroidery Patc
 - **Styling:** Tailwind CSS + PostCSS
 - **Animation:** Framer Motion
 - **Notifications:** React Toastify
-- **Testing:** Jest (tests colocated under `src/**/__tests__`)
+- **Testing:** Jest (tests under `tests/{unit,integration,e2e}`)
 
 ## Features
 
@@ -66,6 +66,7 @@ npm run lint     # Check code quality
 ```
 Frontend/
 |-- public/
+|-- tests/              # Unit, integration, and e2e tests
 |-- src/
 |   |-- api/            # API service and helpers
 |   |-- assets/         # Static assets
@@ -121,7 +122,7 @@ Frontend/
 
 ## Testing
 
-Tests are colocated under `src/**/__tests__`. Add or configure your preferred test runner (Jest/Vitest) to execute them.
+Tests live under `tests/{unit,integration,e2e}`. Add or configure your preferred test runner (Jest/Vitest) to execute them.
 
 ## Environment Variables
 

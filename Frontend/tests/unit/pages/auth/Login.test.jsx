@@ -4,11 +4,11 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import Login from '../Login';
-import { loginUser } from '../../../redux/actions/AuthAction';
+import Login from '../../../../src/pages/auth/Login';
+import { loginUser } from '../../../../src/redux/actions/AuthAction';
 
 // Mock dependencies
-jest.mock('../../../redux/actions/AuthAction');
+jest.mock('../../../../src/redux/actions/AuthAction');
 jest.mock('react-toastify', () => ({
   toast: {
     error: jest.fn(),

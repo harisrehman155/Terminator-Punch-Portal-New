@@ -1,5 +1,5 @@
-import AuthReducer from '../AuthReducer';
-import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, UPDATE_PROFILE, GET_PROFILE } from '../../ActionTypes';
+import AuthReducer from '../../../../src/redux/reducers/AuthReducer';
+import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, UPDATE_PROFILE, GET_PROFILE } from '../../../../src/redux/ActionTypes';
 
 // Mock localStorage
 const localStorageMock = {

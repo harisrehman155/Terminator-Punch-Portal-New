@@ -3,11 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import Profile from '../Profile';
+import Profile from '../../../../src/pages/user/Profile';
 import { toast } from 'react-toastify';
-import { getUserProfile, updateProfile, updateUserProfile } from '../../../redux/actions/AuthAction';
+import { getUserProfile, updateProfile, updateUserProfile } from '../../../../src/redux/actions/AuthAction';
 
-jest.mock('../../../redux/actions/AuthAction', () => ({
+jest.mock('../../../../src/redux/actions/AuthAction', () => ({
   getUserProfile: jest.fn(),
   updateUserProfile: jest.fn(),
   updateProfile: jest.fn(),

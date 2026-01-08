@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import Topbar from '../Topbar';
+import Topbar from '../../../../src/components/layout/Topbar';
 
 const mockStore = configureStore([thunk]);
 
