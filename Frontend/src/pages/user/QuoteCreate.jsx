@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -26,9 +27,36 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
+import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
+
+const FormSection = ({ title, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography
+      variant="subtitle1"
+      fontWeight={600}
+      color="primary"
+      sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
+    >
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
 
 const QuoteCreate = () => {
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [formData, setFormData] = useState({
     quote_type: '',
     design_name: '',
@@ -43,6 +71,11 @@ const QuoteCreate = () => {
     instruction: '',
     is_urgent: false,
   });
+  const [files, setFiles] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
+  const colorTypeOptions = ['Full Color', 'Solid', 'Gradient', 'Two Color', 'Multi Color', 'Other'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -59,40 +92,124 @@ const QuoteCreate = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
     if (!formData.quote_type || !formData.design_name || !formData.width || !formData.height) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success('Quote request created successfully');
-    navigate('/quotes');
-  };
+    if (
+      (formData.quote_type === 'DIGITIZING' || formData.quote_type === 'PATCHES') &&
+      (!formData.number_of_colors || !formData.fabric)
+    ) {
+      toast.error('Please add number of colors and fabric');
+      return;
+    }
+    if (formData.quote_type === 'VECTOR' && !formData.color_type) {
+      toast.error('Please add color type');
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to create a quote');
+      return;
+    }
 
-  // Section wrapper component for consistent styling
-  const FormSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        fontWeight={600}
-        color="primary"
-        sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        ...formData,
+        width: formData.width ? parseFloat(formData.width) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        number_of_colors: formData.number_of_colors
+          ? parseInt(formData.number_of_colors, 10)
+          : null,
+        is_urgent: formData.is_urgent ? 1 : 0,
+      };
+
+      const response = await apiService({
+        method: HttpMethod.POST,
+        endPoint: '/quotes',
+        data: payload,
+        token,
+      });
+
+      const isSuccess =
+        response?.success === true ||
+        response?.status === 'success';
+
+      if (!isSuccess) {
+        toast.error(response?.message || 'Failed to create quote');
+        return;
+      }
+
+      const quoteId = response?.data?.id;
+
+      if (quoteId && files.length > 0) {
+        const uploadResults = await Promise.all(
+          files.map(async (file) => {
+            const data = new FormData();
+            data.append('file', file);
+            const uploadResponse = await fetch(
+              `${API_BASE_URL}/files/quotes/${quoteId}/upload`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                body: data,
+              }
+            );
+
+            let errorMessage = null;
+            if (!uploadResponse.ok) {
+              try {
+                const payload = await uploadResponse.json();
+                errorMessage = payload?.message || null;
+              } catch (err) {
+                errorMessage = null;
+              }
+            }
+
+            return {
+              name: file.name,
+              ok: uploadResponse.ok,
+              message: errorMessage,
+            };
+          })
+        );
+
+        const failedUploads = uploadResults.filter((result) => !result.ok);
+        if (failedUploads.length > 0) {
+          const failedNames = failedUploads.map((result) => result.name).join(', ');
+          const failureMessage = failedUploads.find((result) => result.message)?.message;
+          toast.error(
+            failureMessage
+              ? `Quote created but upload failed: ${failureMessage}`
+              : `Quote created but some files failed to upload: ${failedNames}`
+          );
+          navigate('/quotes');
+          return;
+        }
+      }
+
+      toast.success(response?.message || 'Quote request created successfully');
+      navigate('/quotes');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to create quote';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Box>
@@ -194,7 +311,7 @@ const QuoteCreate = () => {
             </FormSection>
 
             {/* Conditional Fields based on Quote Type */}
-            {formData.quote_type === 'DIGITIZING' && (
+            {(formData.quote_type === 'DIGITIZING' || formData.quote_type === 'PATCHES') && (
               <FormSection title="Digitizing Details">
                 <Box
                   sx={{
@@ -213,29 +330,42 @@ const QuoteCreate = () => {
                     inputProps={{ min: '0' }}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Fabric"
-                    name="fabric"
-                    value={formData.fabric}
-                    onChange={handleChange}
-                    placeholder="e.g., Cotton, Polyester"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Fabric</InputLabel>
+                    <Select
+                      name="fabric"
+                      value={formData.fabric}
+                      onChange={handleChange}
+                      label="Fabric"
+                    >
+                      {fabricOptions.map((fabric) => (
+                        <MenuItem key={fabric} value={fabric}>
+                          {fabric}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Box>
               </FormSection>
             )}
 
             {formData.quote_type === 'VECTOR' && (
               <FormSection title="Vector Details">
-                <TextField
-                  fullWidth
-                  label="Color Type"
-                  name="color_type"
-                  value={formData.color_type}
-                  onChange={handleChange}
-                  placeholder="e.g., Full Color, Gradient"
-                  sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}
-                />
+                <FormControl fullWidth sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}>
+                  <InputLabel>Color Type</InputLabel>
+                  <Select
+                    name="color_type"
+                    value={formData.color_type}
+                    onChange={handleChange}
+                    label="Color Type"
+                  >
+                    {colorTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </FormSection>
             )}
 
@@ -326,8 +456,15 @@ const QuoteCreate = () => {
                   }}
                 >
                   Click to Upload Files
-                  <input type="file" hidden multiple />
+                  <input type="file" hidden multiple onChange={handleFileChange} />
                 </Button>
+                {files.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {files.map((file) => (
+                      <Chip key={file.name} label={file.name} size="small" />
+                    ))}
+                  </Box>
+                )}
 
                 <FormControlLabel
                   control={
@@ -389,8 +526,9 @@ const QuoteCreate = () => {
                 type="submit"
                 variant="contained"
                 sx={{ minWidth: 140 }}
+                disabled={isSubmitting}
               >
-                Create Quote
+                {isSubmitting ? 'Creating...' : 'Create Quote'}
               </Button>
             </Box>
           </Box>

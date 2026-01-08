@@ -296,7 +296,7 @@ export const deleteQuote = asyncHandler(async (req: Request, res: Response) => {
     throw new ValidationError('Invalid quote ID');
   }
 
-  await QuoteService.deleteQuote(quoteId, req.user.role);
+  await QuoteService.deleteQuote(quoteId, req.user.userId, req.user.role);
 
   return successResponse(res, 'Quote deleted successfully');
 });

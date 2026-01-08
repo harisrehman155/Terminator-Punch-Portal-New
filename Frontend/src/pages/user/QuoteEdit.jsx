@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -26,12 +27,42 @@ import {
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
-import { dummyQuotes } from '../../data/dummyQuotes';
+import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
+
+const FormSection = ({ title, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography
+      variant="subtitle1"
+      fontWeight={600}
+      color="primary"
+      sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
+    >
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
 
 const QuoteEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const quote = dummyQuotes.find((q) => q.id === parseInt(id));
+  const token = useSelector((state) => state.auth.token);
+  const [quote, setQuote] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quoteFiles, setQuoteFiles] = useState([]);
+  const [newFiles, setNewFiles] = useState([]);
 
   const [formData, setFormData] = useState({
     quote_type: '',
@@ -48,24 +79,85 @@ const QuoteEdit = () => {
     is_urgent: false,
   });
 
+  const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
+  const colorTypeOptions = ['Full Color', 'Solid', 'Gradient', 'Two Color', 'Multi Color', 'Other'];
+
   useEffect(() => {
-    if (quote) {
-      setFormData({
-        quote_type: quote.quote_type || '',
-        design_name: quote.design_name || '',
-        width: quote.width || '',
-        height: quote.height || '',
-        unit: quote.unit || 'inch',
-        number_of_colors: quote.number_of_colors || '',
-        fabric: quote.fabric || '',
-        color_type: quote.color_type || '',
-        placement: quote.placement || [],
-        required_format: quote.required_format || [],
-        instruction: quote.instruction || '',
-        is_urgent: quote.is_urgent === 1,
-      });
-    }
-  }, [quote]);
+    let isMounted = true;
+
+    const fetchQuote = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/quotes/${id}`,
+          token,
+        });
+        const quoteData = response?.data || null;
+
+        let filesData = [];
+        try {
+          const filesResponse = await apiService({
+            method: HttpMethod.GET,
+            endPoint: `/files/quotes/${id}`,
+            token,
+          });
+          filesData = filesResponse?.data || [];
+        } catch (fileError) {
+          const message =
+            fileError?.apiMessage || fileError?.message || 'Failed to load quote files';
+          toast.error(message);
+        }
+
+        if (isMounted) {
+          setQuote(quoteData);
+          setQuoteFiles(filesData);
+          if (quoteData) {
+            setFormData({
+              quote_type: quoteData.service_type || quoteData.quote_type || '',
+              design_name: quoteData.design_name || '',
+              width: quoteData.width ?? '',
+              height: quoteData.height ?? '',
+              unit: quoteData.unit || 'inch',
+              number_of_colors: quoteData.number_of_colors ?? '',
+              fabric: quoteData.fabric || '',
+              color_type: quoteData.color_type || '',
+              placement: quoteData.placement || [],
+              required_format: quoteData.required_format || [],
+              instruction: quoteData.instruction || '',
+              is_urgent: Boolean(quoteData.is_urgent),
+            });
+          }
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load quote';
+        toast.error(message);
+        if (isMounted) {
+          setQuote(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchQuote();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, token]);
+
+  if (isLoading) {
+    return <Box>Loading quote...</Box>;
+  }
 
   if (!quote) {
     return <Box>Quote not found</Box>;
@@ -86,40 +178,175 @@ const QuoteEdit = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    setNewFiles(selectedFiles);
+  };
+
+  const handleDownload = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
     if (!formData.quote_type || !formData.design_name || !formData.width || !formData.height) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success('Quote updated successfully');
-    navigate(`/quotes/${id}`);
-  };
+    if (
+      (formData.quote_type === 'DIGITIZING' || formData.quote_type === 'PATCHES') &&
+      (!formData.number_of_colors || !formData.fabric)
+    ) {
+      toast.error('Please add number of colors and fabric');
+      return;
+    }
+    if (formData.quote_type === 'VECTOR' && !formData.color_type) {
+      toast.error('Please add color type');
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to update the quote');
+      return;
+    }
 
-  // Section wrapper component for consistent styling
-  const FormSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        fontWeight={600}
-        color="primary"
-        sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        design_name: formData.design_name.trim(),
+        width: formData.width ? parseFloat(formData.width) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        unit: formData.unit || undefined,
+        placement: formData.placement,
+        required_format: formData.required_format,
+        instruction: formData.instruction,
+        is_urgent: formData.is_urgent ? 1 : 0,
+      };
+
+      if (formData.quote_type === 'VECTOR') {
+        payload.color_type = formData.color_type;
+      }
+
+      if (formData.quote_type === 'DIGITIZING' || formData.quote_type === 'PATCHES') {
+        payload.number_of_colors = formData.number_of_colors
+          ? parseInt(formData.number_of_colors, 10)
+          : null;
+        payload.fabric = formData.fabric;
+      }
+
+      const response = await apiService({
+        method: HttpMethod.PUT,
+        endPoint: `/quotes/${id}`,
+        data: payload,
+        token,
+      });
+
+      const isSuccess =
+        response?.success === true ||
+        response?.status === 'success';
+
+      if (!isSuccess) {
+        toast.error(response?.message || 'Failed to update quote');
+        return;
+      }
+
+      if (newFiles.length > 0) {
+        const uploadResults = await Promise.all(
+          newFiles.map(async (file) => {
+            const data = new FormData();
+            data.append('file', file);
+            const uploadResponse = await fetch(
+              `${API_BASE_URL}/files/quotes/${id}/upload`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                body: data,
+              }
+            );
+
+            let errorMessage = null;
+            if (!uploadResponse.ok) {
+              try {
+                const payload = await uploadResponse.json();
+                errorMessage = payload?.message || null;
+              } catch (err) {
+                errorMessage = null;
+              }
+            }
+
+            return {
+              name: file.name,
+              ok: uploadResponse.ok,
+              message: errorMessage,
+            };
+          })
+        );
+
+        const failedUploads = uploadResults.filter((result) => !result.ok);
+        if (failedUploads.length > 0) {
+          const failedNames = failedUploads.map((result) => result.name).join(', ');
+          const failureMessage = failedUploads.find((result) => result.message)?.message;
+          toast.error(
+            failureMessage
+              ? `Quote updated but upload failed: ${failureMessage}`
+              : `Quote updated but some files failed to upload: ${failedNames}`
+          );
+        } else {
+          toast.success('Quote updated and files uploaded successfully');
+        }
+      } else {
+        toast.success(response?.message || 'Quote updated successfully');
+      }
+
+      setNewFiles([]);
+      navigate(`/quotes/${id}`);
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to update quote';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Box>
@@ -152,6 +379,7 @@ const QuoteEdit = () => {
                     value={formData.quote_type}
                     onChange={handleChange}
                     label="Quote Type"
+                    disabled
                   >
                     {lookups.order_types.map((type) => (
                       <MenuItem key={type} value={type}>
@@ -222,7 +450,7 @@ const QuoteEdit = () => {
             </FormSection>
 
             {/* Conditional Fields based on Quote Type */}
-            {formData.quote_type === 'DIGITIZING' && (
+            {(formData.quote_type === 'DIGITIZING' || formData.quote_type === 'PATCHES') && (
               <FormSection title="Digitizing Details">
                 <Box
                   sx={{
@@ -241,29 +469,42 @@ const QuoteEdit = () => {
                     inputProps={{ min: '0' }}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Fabric"
-                    name="fabric"
-                    value={formData.fabric}
-                    onChange={handleChange}
-                    placeholder="e.g., Cotton, Polyester"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Fabric</InputLabel>
+                    <Select
+                      name="fabric"
+                      value={formData.fabric}
+                      onChange={handleChange}
+                      label="Fabric"
+                    >
+                      {fabricOptions.map((fabric) => (
+                        <MenuItem key={fabric} value={fabric}>
+                          {fabric}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Box>
               </FormSection>
             )}
 
             {formData.quote_type === 'VECTOR' && (
               <FormSection title="Vector Details">
-                <TextField
-                  fullWidth
-                  label="Color Type"
-                  name="color_type"
-                  value={formData.color_type}
-                  onChange={handleChange}
-                  placeholder="e.g., Full Color, Gradient"
-                  sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}
-                />
+                <FormControl fullWidth sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}>
+                  <InputLabel>Color Type</InputLabel>
+                  <Select
+                    name="color_type"
+                    value={formData.color_type}
+                    onChange={handleChange}
+                    label="Color Type"
+                  >
+                    {colorTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </FormSection>
             )}
 
@@ -354,8 +595,28 @@ const QuoteEdit = () => {
                   }}
                 >
                   Click to Upload Files
-                  <input type="file" hidden multiple />
+                  <input type="file" hidden multiple onChange={handleFileChange} />
                 </Button>
+                {newFiles.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {newFiles.map((file) => (
+                      <Chip key={file.name} label={file.name} size="small" />
+                    ))}
+                  </Box>
+                )}
+                {quoteFiles.length > 0 && (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {quoteFiles.map((file) => (
+                      <Chip
+                        key={file.id}
+                        label={file.original_name}
+                        size="small"
+                        onClick={() => handleDownload(file)}
+                        sx={{ cursor: 'pointer' }}
+                      />
+                    ))}
+                  </Box>
+                )}
 
                 <FormControlLabel
                   control={
@@ -417,8 +678,9 @@ const QuoteEdit = () => {
                 type="submit"
                 variant="contained"
                 sx={{ minWidth: 140 }}
+                disabled={isSubmitting}
               >
-                Update Quote
+                {isSubmitting ? 'Updating...' : 'Update Quote'}
               </Button>
             </Box>
           </Box>

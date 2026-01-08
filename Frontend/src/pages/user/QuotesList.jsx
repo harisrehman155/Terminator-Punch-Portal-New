@@ -1,36 +1,136 @@
-import { useState } from 'react';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Box,
+  TextField,
+  MenuItem,
+  Chip,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Edit, Delete } from '@mui/icons-material';
+import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyQuotes } from '../../data/dummyQuotes';
 import { lookups } from '../../data/dummyLookups';
+import apiService, { HttpMethod } from '../../api/ApiService';
 
 const QuotesList = () => {
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
+  const [quotes, setQuotes] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  let filteredQuotes = dummyQuotes;
+  useEffect(() => {
+    let isMounted = true;
 
-  if (statusFilter !== 'all') {
-    filteredQuotes = filteredQuotes.filter(q => q.status === statusFilter);
-  }
+    const fetchQuotes = async () => {
+      if (!token) {
+        return;
+      }
 
-  if (typeFilter !== 'all') {
-    filteredQuotes = filteredQuotes.filter(q => q.quote_type === typeFilter);
-  }
+      setIsLoading(true);
 
-  if (searchText) {
-    filteredQuotes = filteredQuotes.filter(
-      q =>
-        q.quote_no.toLowerCase().includes(searchText.toLowerCase()) ||
-        q.design_name.toLowerCase().includes(searchText.toLowerCase())
-    );
-  }
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: '/quotes',
+          token,
+        });
+
+        const list = response?.data?.quotes || [];
+        if (isMounted) {
+          setQuotes(list);
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load quotes';
+        toast.error(message);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchQuotes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  const filteredQuotes = useMemo(() => {
+    let filtered = quotes;
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((quote) => quote.status === statusFilter);
+    }
+
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(
+        (quote) => (quote.service_type || quote.quote_type) === typeFilter
+      );
+    }
+
+    if (searchText) {
+      const query = searchText.toLowerCase();
+      filtered = filtered.filter(
+        (quote) =>
+          quote.quote_no?.toLowerCase().includes(query) ||
+          quote.design_name?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [quotes, searchText, statusFilter, typeFilter]);
+
+  const handleDeleteClick = (quote) => {
+    setSelectedQuote(quote);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedQuote) {
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to delete the quote');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/quotes/${selectedQuote.id}`,
+        token,
+      });
+      setQuotes((prev) => prev.filter((quote) => quote.id !== selectedQuote.id));
+      toast.success('Quote deleted successfully');
+      setDeleteDialogOpen(false);
+      setSelectedQuote(null);
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete quote';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const columns = [
     {
@@ -50,6 +150,7 @@ const QuotesList = () => {
       field: 'quote_type',
       headerName: 'Type',
       width: 120,
+      valueGetter: (params) => params.row.service_type || params.row.quote_type,
     },
     {
       field: 'design_name',
@@ -66,22 +167,23 @@ const QuotesList = () => {
       field: 'current_price',
       headerName: 'Price',
       width: 120,
-      renderCell: (params) =>
-        params.value ? (
-          <Chip
-            label={`${params.row.currency} ${params.value}`}
-            size="small"
-            color="success"
-          />
-        ) : (
-          <Chip label="Pending" size="small" />
+        renderCell: (params) =>
+          params.value ? (
+            <Chip
+              label={`${params.row.currency || 'USD'} ${params.value}`}
+              size="small"
+              color="success"
+            />
+          ) : (
+            <Chip label="Pending" size="small" />
         ),
     },
     {
       field: 'created_at',
       headerName: 'Created',
       width: 180,
-      valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
+      valueFormatter: (params) =>
+        params.value ? new Date(params.value).toLocaleDateString() : '-',
     },
     {
       field: 'actions',
@@ -119,7 +221,7 @@ const QuotesList = () => {
               color="error"
               onClick={(e) => {
                 e.stopPropagation();
-                // Handle delete
+                handleDeleteClick(params.row);
               }}
             >
               <Delete fontSize="small" />
@@ -187,6 +289,7 @@ const QuotesList = () => {
           columns={columns}
           pageSize={10}
           rowsPerPageOptions={[10, 25, 50]}
+          loading={isLoading}
           onRowClick={(params) => navigate(`/quotes/${params.row.id}`)}
           sx={{
             '& .MuiDataGrid-row:hover': {
@@ -195,9 +298,33 @@ const QuotesList = () => {
           }}
         />
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => (isDeleting ? null : setDeleteDialogOpen(false))}
+      >
+        <DialogTitle>Delete Quote</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this quote? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
 export default QuotesList;
-
