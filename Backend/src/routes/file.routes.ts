@@ -81,6 +81,16 @@ router.post(
 router.get('/orders/:orderId', authenticate, FileController.getOrderFiles);
 
 /**
+ * GET /api/files/orders/:orderId/download-all
+ * Download all files for an order as zip
+ */
+router.get(
+  '/orders/:orderId/download-all',
+  authenticate,
+  FileController.downloadOrderFilesZip
+);
+
+/**
  * GET /api/files/quotes/:quoteId
  * Get files for quote
  */

@@ -15,13 +15,14 @@ import {
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
-import { Visibility, Edit, Delete } from '@mui/icons-material';
+import { Visibility, Edit, Delete, Download } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import { lookups } from '../../data/dummyLookups';
 import apiService, { HttpMethod } from '../../api/ApiService';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const OrdersList = () => {
   const navigate = useNavigate();
@@ -130,6 +131,48 @@ const OrdersList = () => {
     }
   };
 
+  const handleDownloadAll = async (order) => {
+    if (!token) {
+      toast.error('Please log in again to download files');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/files/orders/${order.id}/download-all`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        let message = 'Failed to download files';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (err) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${order.order_no || `order-${order.id}`}-files.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download files';
+      toast.error(message);
+    }
+  };
+
   const columns = [
     {
       field: 'order_no',
@@ -206,6 +249,18 @@ const OrdersList = () => {
               }}
             >
               <Edit fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Download all files">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadAll(params.row);
+              }}
+            >
+              <Download fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete">
