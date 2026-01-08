@@ -75,6 +75,7 @@ const OrderCreate = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
+  const colorTypeOptions = ['Full Color', 'Solid', 'Gradient', 'Two Color', 'Multi Color', 'Other'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -325,15 +326,21 @@ const OrderCreate = () => {
 
             {formData.order_type === 'VECTOR' && (
               <FormSection title="Vector Details">
-                <TextField
-                  fullWidth
-                  label="Color Type"
-                  name="color_type"
-                  value={formData.color_type}
-                  onChange={handleChange}
-                  placeholder="e.g., Full Color, Gradient"
-                  sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}
-                />
+                <FormControl fullWidth sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}>
+                  <InputLabel>Color Type</InputLabel>
+                  <Select
+                    name="color_type"
+                    value={formData.color_type}
+                    onChange={handleChange}
+                    label="Color Type"
+                  >
+                    {colorTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </FormSection>
             )}
 

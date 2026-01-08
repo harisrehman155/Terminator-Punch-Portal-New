@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -26,12 +27,15 @@ import {
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import { lookups } from '../../data/dummyLookups';
-import { dummyOrders } from '../../data/dummyOrders';
+import apiService, { HttpMethod } from '../../api/ApiService';
 
 const OrderEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const order = dummyOrders.find((o) => o.id === parseInt(id));
+  const token = useSelector((state) => state.auth.token);
+  const [order, setOrder] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     order_type: '',
@@ -48,24 +52,70 @@ const OrderEdit = () => {
     is_urgent: false,
   });
 
+  const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
+  const colorTypeOptions = ['Full Color', 'Solid', 'Gradient', 'Two Color', 'Multi Color', 'Other'];
+
   useEffect(() => {
-    if (order) {
-      setFormData({
-        order_type: order.order_type || '',
-        design_name: order.design_name || '',
-        width: order.width || '',
-        height: order.height || '',
-        unit: order.unit || 'inch',
-        number_of_colors: order.number_of_colors || '',
-        fabric: order.fabric || '',
-        color_type: order.color_type || '',
-        placement: order.placement || [],
-        required_format: order.required_format || [],
-        instruction: order.instruction || '',
-        is_urgent: order.is_urgent === 1,
-      });
-    }
-  }, [order]);
+    let isMounted = true;
+
+    const fetchOrder = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/orders/${id}`,
+          token,
+        });
+        const orderData = response?.data || null;
+
+        if (isMounted) {
+          setOrder(orderData);
+          if (orderData) {
+            setFormData({
+              order_type: orderData.order_type || '',
+              design_name: orderData.design_name || '',
+              width: orderData.width ?? '',
+              height: orderData.height ?? '',
+              unit: orderData.unit || 'inch',
+              number_of_colors: orderData.number_of_colors ?? '',
+              fabric: orderData.fabric || '',
+              color_type: orderData.color_type || '',
+              placement: orderData.placement || [],
+              required_format: orderData.required_format || [],
+              instruction: orderData.instruction || '',
+              is_urgent: Boolean(orderData.is_urgent),
+            });
+          }
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load order';
+        toast.error(message);
+        if (isMounted) {
+          setOrder(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchOrder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, token]);
+
+  if (isLoading) {
+    return <Box>Loading order...</Box>;
+  }
 
   if (!order) {
     return <Box>Order not found</Box>;
@@ -86,14 +136,80 @@ const OrderEdit = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
     if (!formData.order_type || !formData.design_name || !formData.width || !formData.height) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success('Order updated successfully');
-    navigate(`/orders/${id}`);
+    if (
+      (formData.order_type === 'DIGITIZING' || formData.order_type === 'PATCHES') &&
+      (!formData.number_of_colors || !formData.fabric)
+    ) {
+      toast.error('Please add number of colors and fabric');
+      return;
+    }
+    if (formData.order_type === 'VECTOR' && !formData.color_type) {
+      toast.error('Please add color type');
+      return;
+    }
+    if (!token) {
+      toast.error('Please log in again to update the order');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        design_name: formData.design_name.trim(),
+        width: formData.width ? parseFloat(formData.width) : null,
+        height: formData.height ? parseFloat(formData.height) : null,
+        unit: formData.unit || undefined,
+        placement: formData.placement,
+        required_format: formData.required_format,
+        instruction: formData.instruction,
+        is_urgent: formData.is_urgent ? 1 : 0,
+      };
+
+      if (formData.order_type === 'VECTOR') {
+        payload.color_type = formData.color_type;
+      }
+
+      if (formData.order_type === 'DIGITIZING' || formData.order_type === 'PATCHES') {
+        payload.number_of_colors = formData.number_of_colors
+          ? parseInt(formData.number_of_colors, 10)
+          : null;
+        payload.fabric = formData.fabric;
+      }
+
+      const response = await apiService({
+        method: HttpMethod.PUT,
+        endPoint: `/orders/${id}`,
+        data: payload,
+        token,
+      });
+
+      const isSuccess =
+        response?.success === true ||
+        response?.status === 'success';
+
+      if (!isSuccess) {
+        toast.error(response?.message || 'Failed to update order');
+        return;
+      }
+
+      toast.success(response?.message || 'Order updated successfully');
+      navigate(`/orders/${id}`);
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to update order';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Section wrapper component for consistent styling
@@ -152,6 +268,7 @@ const OrderEdit = () => {
                     value={formData.order_type}
                     onChange={handleChange}
                     label="Order Type"
+                    disabled
                   >
                     {lookups.order_types.map((type) => (
                       <MenuItem key={type} value={type}>
@@ -222,7 +339,7 @@ const OrderEdit = () => {
             </FormSection>
 
             {/* Conditional Fields based on Order Type */}
-            {formData.order_type === 'DIGITIZING' && (
+            {(formData.order_type === 'DIGITIZING' || formData.order_type === 'PATCHES') && (
               <FormSection title="Digitizing Details">
                 <Box
                   sx={{
@@ -241,29 +358,42 @@ const OrderEdit = () => {
                     inputProps={{ min: '0' }}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Fabric"
-                    name="fabric"
-                    value={formData.fabric}
-                    onChange={handleChange}
-                    placeholder="e.g., Cotton, Polyester"
-                  />
+                  <FormControl fullWidth>
+                    <InputLabel>Fabric</InputLabel>
+                    <Select
+                      name="fabric"
+                      value={formData.fabric}
+                      onChange={handleChange}
+                      label="Fabric"
+                    >
+                      {fabricOptions.map((fabric) => (
+                        <MenuItem key={fabric} value={fabric}>
+                          {fabric}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Box>
               </FormSection>
             )}
 
             {formData.order_type === 'VECTOR' && (
               <FormSection title="Vector Details">
-                <TextField
-                  fullWidth
-                  label="Color Type"
-                  name="color_type"
-                  value={formData.color_type}
-                  onChange={handleChange}
-                  placeholder="e.g., Full Color, Gradient"
-                  sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}
-                />
+                <FormControl fullWidth sx={{ maxWidth: { sm: 'calc(50% - 10px)' } }}>
+                  <InputLabel>Color Type</InputLabel>
+                  <Select
+                    name="color_type"
+                    value={formData.color_type}
+                    onChange={handleChange}
+                    label="Color Type"
+                  >
+                    {colorTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </FormSection>
             )}
 
@@ -417,8 +547,9 @@ const OrderEdit = () => {
                 type="submit"
                 variant="contained"
                 sx={{ minWidth: 140 }}
+                disabled={isSubmitting}
               >
-                Update Order
+                {isSubmitting ? 'Updating...' : 'Update Order'}
               </Button>
             </Box>
           </Box>

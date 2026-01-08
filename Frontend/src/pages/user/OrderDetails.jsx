@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -26,22 +28,75 @@ import {
 import { Download, Edit, Delete, Cancel } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyOrders } from '../../data/dummyOrders';
-import { dummyOrderFiles } from '../../data/dummyOrderFiles';
-import { dummyOrderHistory } from '../../data/dummyOrderHistory';
-import { useState } from 'react';
 import { toast } from 'react-toastify';
+import apiService, { HttpMethod } from '../../api/ApiService';
 
 const OrderDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const [tabValue, setTabValue] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [order, setOrder] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [history] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  const order = dummyOrders.find((o) => o.id === parseInt(id));
-  const files = dummyOrderFiles.filter((f) => f.entity_id === parseInt(id));
-  const history = dummyOrderHistory.filter((h) => h.order_id === parseInt(id));
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchOrder = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const response = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/orders/${id}`,
+          token,
+        });
+        const orderData = response?.data || null;
+
+        const filesResponse = await apiService({
+          method: HttpMethod.GET,
+          endPoint: `/files/orders/${id}`,
+          token,
+        });
+
+        if (isMounted) {
+          setOrder(orderData);
+          setFiles(filesResponse?.data || []);
+        }
+      } catch (error) {
+        const message = error?.apiMessage || error?.message || 'Failed to load order';
+        toast.error(message);
+        if (isMounted) {
+          setOrder(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchOrder();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, token]);
+
+  if (isLoading) {
+    return <Typography>Loading order...</Typography>;
+  }
 
   if (!order) {
     return <Typography>Order not found</Typography>;
@@ -51,16 +106,54 @@ const OrderDetails = () => {
     setTabValue(newValue);
   };
 
-  const handleDelete = () => {
-    toast.success('Order deleted successfully');
-    setDeleteDialogOpen(false);
-    navigate('/orders');
+  const handleDelete = async () => {
+    if (!token) {
+      toast.error('Please log in again to delete the order');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/orders/${id}`,
+        token,
+      });
+      toast.success('Order deleted successfully');
+      setDeleteDialogOpen(false);
+      navigate('/orders');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete order';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const handleCancel = () => {
-    toast.success('Order cancelled successfully');
-    setCancelDialogOpen(false);
-    navigate('/orders');
+  const handleCancel = async () => {
+    if (!token) {
+      toast.error('Please log in again to cancel the order');
+      return;
+    }
+
+    setIsCancelling(true);
+
+    try {
+      await apiService({
+        method: HttpMethod.POST,
+        endPoint: `/orders/${id}/cancel`,
+        token,
+      });
+      toast.success('Order cancelled successfully');
+      setCancelDialogOpen(false);
+      navigate('/orders');
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to cancel order';
+      toast.error(message);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   // Section wrapper component for consistent styling
@@ -93,10 +186,19 @@ const OrderDetails = () => {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
         {label}
       </Typography>
-      {value && <Typography variant="body1" fontWeight={500}>{value}</Typography>}
+      {value !== undefined && value !== null && value !== '' && (
+        <Typography variant="body1" fontWeight={500}>{value}</Typography>
+      )}
       {children}
     </Box>
   );
+
+  const placements = order.placement || [];
+  const formats = order.required_format || [];
+  const sizeLabel =
+    order.width && order.height
+      ? `${order.width} x ${order.height} ${order.unit || ''}`.trim()
+      : '-';
 
   return (
     <Box>
@@ -129,10 +231,10 @@ const OrderDetails = () => {
               <Typography variant="h5" fontWeight={600} mb={1}>
                 {order.design_name}
               </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <StatusChip status={order.status} />
-                {order.is_urgent && <Chip label="Urgent" size="small" color="warning" />}
-              </Box>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <StatusChip status={order.status} />
+              {order.is_urgent ? <Chip label="Urgent" size="small" color="warning" /> : null}
+            </Box>
             </Box>
             <Box display="flex" gap={1} flexWrap="wrap">
               <Button
@@ -175,22 +277,23 @@ const OrderDetails = () => {
           {/* Overview Tab */}
           {tabValue === 0 && (
             <>
-              <DetailSection title="Basic Information">
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                    gap: 3,
-                  }}
-                >
-                  <DetailRow label="Order Type" value={order.order_type} />
-                  <DetailRow label="Size" value={`${order.width} x ${order.height} ${order.unit}`} />
-                  {order.number_of_colors && (
-                    <DetailRow label="Number of Colors" value={order.number_of_colors} />
-                  )}
-                  {order.fabric && <DetailRow label="Fabric" value={order.fabric} />}
-                </Box>
-              </DetailSection>
+            <DetailSection title="Basic Information">
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 3,
+                }}
+              >
+                <DetailRow label="Order Type" value={order.order_type} />
+                <DetailRow label="Size" value={sizeLabel} />
+                {order.number_of_colors && (
+                  <DetailRow label="Number of Colors" value={order.number_of_colors} />
+                )}
+                {order.fabric && <DetailRow label="Fabric" value={order.fabric} />}
+                {order.color_type && <DetailRow label="Color Type" value={order.color_type} />}
+              </Box>
+            </DetailSection>
 
               <DetailSection title="Placement & Format">
                 <Box
@@ -202,16 +305,28 @@ const OrderDetails = () => {
                 >
                   <DetailRow label="Placement">
                     <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                      {order.placement.map((place) => (
-                        <Chip key={place} label={place} size="small" />
-                      ))}
+                      {placements.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Not specified
+                        </Typography>
+                      ) : (
+                        placements.map((place) => (
+                          <Chip key={place} label={place} size="small" />
+                        ))
+                      )}
                     </Box>
                   </DetailRow>
                   <DetailRow label="Required Format">
                     <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                      {order.required_format.map((format) => (
-                        <Chip key={format} label={format} size="small" />
-                      ))}
+                      {formats.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Not specified
+                        </Typography>
+                      ) : (
+                        formats.map((format) => (
+                          <Chip key={format} label={format} size="small" />
+                        ))
+                      )}
                     </Box>
                   </DetailRow>
                 </Box>
@@ -251,13 +366,18 @@ const OrderDetails = () => {
                         <TableRow key={file.id}>
                           <TableCell>{file.original_name}</TableCell>
                           <TableCell>{file.mime_type}</TableCell>
-                          <TableCell>{(file.size_bytes / 1024).toFixed(2)} KB</TableCell>
-                          <TableCell>{file.file_role.replace('_', ' ')}</TableCell>
+                          <TableCell>
+                            {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {file.file_role ? file.file_role.replace('_', ' ') : '-'}
+                          </TableCell>
                           <TableCell>
                             <Button
                               size="small"
                               startIcon={<Download />}
                               variant="outlined"
+                              onClick={() => toast.info('Download not available yet')}
                             >
                               Download
                             </Button>
@@ -320,9 +440,16 @@ const OrderDetails = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
-            Delete
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -336,9 +463,16 @@ const OrderDetails = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCancelDialogOpen(false)}>No</Button>
-          <Button onClick={handleCancel} color="warning" variant="contained">
-            Yes, Cancel Order
+          <Button onClick={() => setCancelDialogOpen(false)} disabled={isCancelling}>
+            No
+          </Button>
+          <Button
+            onClick={handleCancel}
+            color="warning"
+            variant="contained"
+            disabled={isCancelling}
+          >
+            {isCancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
           </Button>
         </DialogActions>
       </Dialog>
