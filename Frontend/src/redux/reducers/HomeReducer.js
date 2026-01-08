@@ -4,29 +4,7 @@ import { FETCH_LOOKUP_VALUES, CATEGORIES, FETCH_PRODUCTS, SET_PRODUCTS_LOADING, 
 const FETCH_ADMIN_ORDERS = 'FETCH_ADMIN_ORDERS';
 const FETCH_ADMIN_QUOTES = 'FETCH_ADMIN_QUOTES';
 
-interface HomeState {
-    lookupValues: any;
-    categories: any[];
-    products: any[];
-    pagination: any;
-    productsLoading: boolean;
-    productsError: string | null;
-    loading: boolean;
-    error: string | null;
-    trendingProducts: any[];
-    latestProducts: any[];
-    recommendedProducts: any[];
-    productDetail: any;
-    productDetailLoading: boolean;
-    userOrders: any[];
-    userQuotes: any[];
-    adminOrders: any[];
-    adminQuotes: any[];
-    dashboardLoading: boolean;
-    dashboardError: string | null;
-}
-
-const initialState: HomeState = {
+const initialState = {
     lookupValues: {},
     categories: [],
     products: [],
@@ -48,7 +26,7 @@ const initialState: HomeState = {
     dashboardError: null
 };
 
-const HomeReducer = (state = initialState, action: any) => {
+const HomeReducer = (state = initialState, action) => {
     switch (action.type) {
         case FETCH_LOOKUP_VALUES:
             return {

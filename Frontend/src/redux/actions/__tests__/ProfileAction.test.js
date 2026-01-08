@@ -18,10 +18,10 @@ jest.mock('../../../api/ApiService', () => ({
 import apiService from '../../../api/ApiService';
 
 const mockStore = configureStore([thunk]);
-const mockedApiService = apiService as jest.MockedFunction<typeof apiService>;
+const mockedApiService = apiService;
 
 describe('Profile Actions', () => {
-  let store: any;
+  let store;
 
   beforeEach(() => {
     store = mockStore({

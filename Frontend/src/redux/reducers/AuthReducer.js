@@ -1,15 +1,7 @@
 import { LOGIN, LOGOUT, SET_AUTH_LOADING, SET_AUTH_ERROR, UPDATE_PROFILE, GET_PROFILE } from '../ActionTypes';
 import { TOKEN_KEY, USER_KEY } from '../../utils/Constants';
 
-interface AuthState {
-  user: any | null;
-  token: string | null;
-  loading: boolean;
-  error: string | null;
-  isAuthenticated: boolean;
-}
-
-const initialState: AuthState = {
+const initialState = {
   user: null,
   token: null,
   loading: false,
@@ -17,7 +9,7 @@ const initialState: AuthState = {
   isAuthenticated: false
 };
 
-const AuthReducer = (state = initialState, action: any): AuthState => {
+const AuthReducer = (state = initialState, action) => {
   switch (action.type) {
     case LOGIN:
       // Store token and user data in localStorage when user logs in
