@@ -13,7 +13,7 @@ import {
 import { Person as PersonIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
-import { getUserProfile, updateUserProfile } from '../../redux/actions/AuthAction';
+import { getUserProfile, updateProfile, updateUserProfile } from '../../redux/actions/AuthAction';
 import Loader from '../../components/common/Loader';
 
 const FormSection = ({ title, children }) => (
@@ -52,6 +52,7 @@ const Profile = () => {
 
   // 🔒 Flag to prevent re-setting form while typing
   const isFormInitialized = useRef(false);
+  const isFormDirty = useRef(false);
 
   // Load profile once
   useEffect(() => {
@@ -60,9 +61,9 @@ const Profile = () => {
     }
   }, [dispatch, user]);
 
-  // Initialize form ONLY ONCE when user data arrives
+  // Initialize form when user data arrives and the form is not dirty
   useEffect(() => {
-    if (user && !isFormInitialized.current) {
+    if (user && (!isFormInitialized.current || !isFormDirty.current)) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
@@ -78,6 +79,7 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    isFormDirty.current = true;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -90,11 +92,34 @@ const Profile = () => {
 
     try {
       const result = await dispatch(updateUserProfile(formData));
+      const message = result?.message;
+      const normalizedMessage = message?.toLowerCase() || '';
+      const isSuccess =
+        result?.success === true ||
+        normalizedMessage.includes('profile updated') ||
+        normalizedMessage.includes('updated successfully');
 
-      if (result?.success) {
-        toast.success(result.message || 'Profile updated successfully');
+      if (isSuccess) {
+        const updatedProfile = {
+          ...(user || {}),
+          ...formData,
+          ...(result?.data || {}),
+        };
+        dispatch(updateProfile(updatedProfile));
+        setFormData({
+          name: updatedProfile.name || '',
+          email: updatedProfile.email || '',
+          company: updatedProfile.company || '',
+          phone: updatedProfile.phone || '',
+          address: updatedProfile.address || '',
+          city: updatedProfile.city || '',
+          country: updatedProfile.country || '',
+        });
+        isFormDirty.current = false;
+        isFormInitialized.current = true;
+        toast.success(message || 'Profile updated successfully');
       } else {
-        toast.error(result?.message || 'Failed to update profile');
+        toast.error(message || 'Failed to update profile');
       }
     } catch (err) {
       toast.error('Something went wrong');
