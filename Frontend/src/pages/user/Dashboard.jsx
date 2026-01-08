@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
   Grid,
@@ -14,6 +16,7 @@ import {
   Chip,
   Stack,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import {
   ShoppingCart,
@@ -23,22 +26,57 @@ import {
 } from '@mui/icons-material';
 import StatCard from '../../components/common/StatCard';
 import StatusChip from '../../components/common/StatusChip';
-import { dummyOrders } from '../../data/dummyOrders';
-import { dummyQuotes } from '../../data/dummyQuotes';
+import PageHeader from '../../components/common/PageHeader';
+import { fetchDashboardData } from '../../redux/actions/PortalAction';
 
 const Dashboard = () => {
-  const orders = dummyOrders;
-  const quotes = dummyQuotes;
+  const dispatch = useDispatch();
+  const { userOrders, userQuotes, dashboardLoading, dashboardError } = useSelector((state) => state.home);
 
+  // Fetch dashboard data on component mount
+  useEffect(() => {
+    dispatch(fetchDashboardData());
+  }, [dispatch]);
+
+  // Calculate stats from real data
   const stats = {
-    totalOrders: orders.length,
-    pending: orders.filter(o => o.status === 'PENDING').length,
-    inProgress: orders.filter(o => o.status === 'IN_PROGRESS').length,
-    completed: orders.filter(o => o.status === 'COMPLETED').length,
+    totalOrders: userOrders.length,
+    pending: userOrders.filter(o => o.status === 'PENDING').length,
+    inProgress: userOrders.filter(o => o.status === 'IN_PROGRESS').length,
+    completed: userOrders.filter(o => o.status === 'COMPLETED').length,
   };
 
-  const recentOrders = orders.slice(0, 5);
-  const recentQuotes = quotes.slice(0, 5);
+  const recentOrders = userOrders.slice(0, 5);
+  const recentQuotes = userQuotes.slice(0, 5);
+
+  // Show loading state
+  if (dashboardLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (dashboardError) {
+    return (
+      <>
+        <PageHeader
+          title="Dashboard"
+          breadcrumbs={[{ label: 'Dashboard' }]}
+        />
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="error">
+            Failed to load dashboard
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {dashboardError}
+          </Typography>
+        </Box>
+      </>
+    );
+  }
 
   return (
     <Box>

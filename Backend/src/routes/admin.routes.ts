@@ -39,4 +39,16 @@ router.patch(
  */
 router.get('/stats', authenticate, requireAdmin, AdminController.getSystemStats);
 
+/**
+ * GET /api/admin/orders
+ * Get all orders (Admin only)
+ */
+router.get('/orders', authenticate, requireAdmin, AdminController.getAllOrders);
+
+/**
+ * GET /api/admin/quotes
+ * Get all quotes (Admin only)
+ */
+router.get('/quotes', authenticate, requireAdmin, AdminController.getAllQuotes);
+
 export default router;

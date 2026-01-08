@@ -2,12 +2,16 @@ import { AppBar, Toolbar, Box, IconButton, InputBase, Badge, Menu, MenuItem, Ava
 import { Search, Notifications, AccountCircle } from '@mui/icons-material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dummyUser } from '../../data/dummyUser';
+import { useDispatch, useSelector } from 'react-redux';
+import { logoutUser } from '../../redux/actions/AuthAction';
 
 const Topbar = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [anchorEl, setAnchorEl] = useState(null);
-  const user = dummyUser;
+
+  // Get user data from Redux store
+  const { user } = useSelector((state) => state.auth);
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -17,9 +21,8 @@ const Topbar = () => {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('role');
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
     navigate('/login');
     handleMenuClose();
   };
@@ -87,10 +90,10 @@ const Topbar = () => {
             onClick={handleMenuOpen}
           >
             <Avatar sx={{ width: 32, height: 32, bgcolor: '#36e27b' }}>
-              {user.name.charAt(0)}
+              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
             </Avatar>
             <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              {user.name}
+              {user?.name || 'Loading...'}
             </Typography>
           </Box>
 
