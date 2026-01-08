@@ -66,8 +66,8 @@ router.post('/:id/cancel', authenticate, OrderController.cancelOrder);
 
 /**
  * DELETE /api/orders/:id
- * Delete order (Admin only)
+ * Delete order (User can delete own, Admin can delete all)
  */
-router.delete('/:id', authenticate, requireAdmin, OrderController.deleteOrder);
+router.delete('/:id', authenticate, OrderController.deleteOrder);
 
 export default router;
