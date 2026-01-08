@@ -3,15 +3,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, CircularProgress, Typography } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
-import { Visibility } from '@mui/icons-material';
+import { Visibility, Download } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import { fetchAdminOrders } from '../../redux/actions/PortalAction';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const AdminOrders = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { adminOrders, dashboardLoading, dashboardError } = useSelector((state) => state.home);
+  const token = useSelector((state) => state.auth.token);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -70,6 +72,43 @@ const AdminOrders = () => {
       </>
     );
   }
+
+  const handleDownloadAll = async (order) => {
+    if (!order) {
+      return;
+    }
+
+    try {
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/files/orders/${order.id}/download-all`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${order.order_no || `order-${order.id}`}-files.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      // Silent failure; dashboard errors are handled elsewhere.
+    }
+  };
 
   const columns = [
     {
@@ -136,21 +175,35 @@ const AdminOrders = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 100,
+      width: 140,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Tooltip title="View">
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/admin/orders/${params.row.id}`);
-            }}
-          >
-            <Visibility fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="View">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/admin/orders/${params.row.id}`);
+              }}
+            >
+              <Visibility fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Download all files">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadAll(params.row);
+              }}
+            >
+              <Download fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
     },
   ];

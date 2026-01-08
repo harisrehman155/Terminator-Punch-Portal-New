@@ -3,6 +3,8 @@ import * as FileService from '../services/file.service';
 import { successResponse, createdResponse } from '../utils/response';
 import { asyncHandler } from '../middleware/error.middleware';
 import { ValidationError } from '../utils/errors';
+import archiver from 'archiver';
+import fs from 'fs';
 
 /**
  * File Controller - Handle file upload operations
@@ -171,3 +173,52 @@ export const downloadFile = asyncHandler(async (req: Request, res: Response) => 
 
   return res.download(file.file_path, file.original_name);
 });
+
+/**
+ * Download all order files as a zip
+ * GET /api/files/orders/:orderId/download-all
+ */
+export const downloadOrderFilesZip = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ValidationError('User not authenticated');
+    }
+
+    const orderId = parseInt(req.params.orderId);
+
+    if (isNaN(orderId)) {
+      throw new ValidationError('Invalid order ID');
+    }
+
+    const files = await FileService.getOrderFiles(
+      orderId,
+      req.user.userId,
+      req.user.role
+    );
+
+    const validFiles = files.filter((file) => file.file_path && fs.existsSync(file.file_path));
+
+    if (validFiles.length === 0) {
+      throw new ValidationError('No files available for download');
+    }
+
+    const zipName = `order-${orderId}-files.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.on('error', (err) => {
+      throw err;
+    });
+
+    archive.pipe(res);
+
+    validFiles.forEach((file) => {
+      const name = file.original_name || file.stored_name || `file-${file.id}`;
+      archive.file(file.file_path, { name });
+    });
+
+    await archive.finalize();
+  }
+);
