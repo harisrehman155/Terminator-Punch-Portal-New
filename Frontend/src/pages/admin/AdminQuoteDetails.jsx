@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -52,10 +53,12 @@ import { dummyQuotes } from '../../data/dummyQuotes';
 import { dummyQuoteFiles } from '../../data/dummyQuoteFiles';
 import { toast } from 'react-toastify';
 import { useState } from 'react';
+import { API_BASE_URL } from '../../utils/Constants';
 
 const AdminQuoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const token = useSelector((state) => state.auth.token);
   const quote = dummyQuotes.find((q) => q.id === parseInt(id));
   const quoteFiles = dummyQuoteFiles.filter((f) => f.entity_id === parseInt(id));
 
@@ -129,8 +132,43 @@ const AdminQuoteDetails = () => {
     return <InsertDriveFile color="action" />;
   };
 
-  const handleDownloadFile = (file) => {
-    toast.info(`Downloading ${file.original_name}...`);
+  const handleDownloadFile = async (file) => {
+    if (!token) {
+      toast.error('Please log in again to download the file');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/${file.id}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to download file';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
   };
 
   const isPending = quote.status === 'PENDING';
