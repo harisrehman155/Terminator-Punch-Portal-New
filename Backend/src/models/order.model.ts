@@ -27,7 +27,7 @@ export const create = async (
     const orderNo = generateOrderNumber();
 
     // Get lookup IDs for order type, status, and unit
-    const serviceTypeId = await getLookupId('order_type', orderData.order_type);
+    const serviceTypeId = await getLookupId('service_type', orderData.order_type);
     if (!serviceTypeId) {
       throw new DatabaseError('Invalid order type');
     }
