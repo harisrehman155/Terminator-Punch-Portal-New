@@ -19,6 +19,7 @@ export interface Order {
   // New FK columns (populated from lookups table)
   service_type_id: number;
   service_type: OrderType; // Joined from lookups table
+  order_type?: OrderType; // Backward-compatible alias
   status_id: number;
   status: OrderStatus; // Joined from lookups table
   design_name: string;
