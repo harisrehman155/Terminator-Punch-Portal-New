@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as UserModel from '../models/user.model';
 import * as OrderModel from '../models/order.model';
 import * as QuoteModel from '../models/quote.model';
+import { query } from '../config/database';
 import { successResponse } from '../utils/response';
 import { asyncHandler } from '../middleware/error.middleware';
 import { ValidationError, ForbiddenError } from '../utils/errors';
@@ -102,40 +103,46 @@ export const getSystemStats = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Get user statistics
-  const totalUsersResult: any = await UserModel.query(
+  const totalUsersResult: any = await query(
     'SELECT COUNT(*) as count FROM users'
   );
-  const activeUsersResult: any = await UserModel.query(
+  const activeUsersResult: any = await query(
     'SELECT COUNT(*) as count FROM users WHERE is_active = 1'
   );
 
   // Get order statistics
-  const totalOrdersResult: any = await UserModel.query(
+  const totalOrdersResult: any = await query(
     'SELECT COUNT(*) as count FROM orders'
   );
-  const pendingOrdersResult: any = await UserModel.query(
+  const pendingOrdersResult: any = await query(
     `SELECT COUNT(*) as count
      FROM orders o
      LEFT JOIN lookups l ON o.status_id = l.id
-     WHERE l.lookup_value = "IN_PROGRESS"`
+     WHERE l.lookup_value = 'PENDING'`
   );
-  const completedOrdersResult: any = await UserModel.query(
+  const inProgressOrdersResult: any = await query(
     `SELECT COUNT(*) as count
      FROM orders o
      LEFT JOIN lookups l ON o.status_id = l.id
-     WHERE l.lookup_value = "COMPLETED"`
+     WHERE l.lookup_value = 'IN_PROGRESS'`
+  );
+  const completedOrdersResult: any = await query(
+    `SELECT COUNT(*) as count
+     FROM orders o
+     LEFT JOIN lookups l ON o.status_id = l.id
+     WHERE l.lookup_value = 'COMPLETED'`
   );
 
   // Get quote statistics
-  const totalQuotesResult: any = await UserModel.query(
+  const totalQuotesResult: any = await query(
     'SELECT COUNT(*) as count FROM quotes'
   );
-  const pendingQuotesResult: any = await UserModel.query(
+  const pendingQuotesResult: any = await query(
     `SELECT COUNT(*) as count FROM quotes q
      LEFT JOIN lookups l ON q.status_id = l.id
      WHERE l.lookup_value = 'PENDING'`
   );
-  const pricedQuotesResult: any = await UserModel.query(
+  const pricedQuotesResult: any = await query(
     `SELECT COUNT(*) as count FROM quotes q
      LEFT JOIN lookups l ON q.status_id = l.id
      WHERE l.lookup_value = 'PRICED'`
@@ -149,6 +156,7 @@ export const getSystemStats = asyncHandler(async (req: Request, res: Response) =
     orders: {
       total: totalOrdersResult[0].count,
       pending: pendingOrdersResult[0].count,
+      in_progress: inProgressOrdersResult[0].count,
       completed: completedOrdersResult[0].count,
     },
     quotes: {
