@@ -1,19 +1,22 @@
 import { query, queryOne } from '../config/database';
 import { DatabaseError, NotFoundError } from '../utils/errors';
 import { getFileExtension, formatFileSize } from '../utils/helpers';
+import { getLookupId } from '../utils/lookup.helper';
 
 export interface FileRecord {
   id: number;
-  filename: string;
+  entity_type_id: number;
+  entity_type?: string;
   original_name: string;
-  mime_type: string;
-  size: number;
-  path: string;
-  entity_type: 'order' | 'quote';
+  stored_name: string;
+  file_path: string;
+  mime_type?: string;
+  size_bytes?: number;
+  file_role_id: number;
+  file_role?: string;
   entity_id: number;
   uploaded_by: number;
   created_at: Date;
-  updated_at: Date;
 }
 
 /**
@@ -24,27 +27,48 @@ export interface FileRecord {
  * Create file record
  */
 export const create = async (fileData: {
-  filename: string;
   original_name: string;
-  mime_type: string;
-  size: number;
-  path: string;
-  entity_type: 'order' | 'quote';
+  stored_name: string;
+  file_path: string;
+  mime_type?: string;
+  size_bytes?: number;
+  entity_type: 'ORDER' | 'QUOTE' | 'order' | 'quote';
+  file_role: 'CUSTOMER_UPLOAD' | 'ADMIN_RESPONSE' | 'ATTACHMENT' | string;
   entity_id: number;
   uploaded_by: number;
 }): Promise<FileRecord> => {
   try {
+    const entityTypeId = await getLookupId('entity_type', fileData.entity_type);
+    if (!entityTypeId) {
+      throw new DatabaseError('Entity type lookup not found');
+    }
+
+    const fileRoleId = await getLookupId('file_role', fileData.file_role);
+    if (!fileRoleId) {
+      throw new DatabaseError('File role lookup not found');
+    }
+
     const result: any = await query(
-      `INSERT INTO files (filename, original_name, mime_type, size, path, entity_type, entity_id, uploaded_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO files (
+        entity_type_id,
+        entity_id,
+        file_role_id,
+        original_name,
+        stored_name,
+        file_path,
+        mime_type,
+        size_bytes,
+        uploaded_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        fileData.filename,
-        fileData.original_name,
-        fileData.mime_type,
-        fileData.size,
-        fileData.path,
-        fileData.entity_type,
+        entityTypeId,
         fileData.entity_id,
+        fileRoleId,
+        fileData.original_name,
+        fileData.stored_name,
+        fileData.file_path,
+        fileData.mime_type,
+        fileData.size_bytes,
         fileData.uploaded_by,
       ]
     );
@@ -71,7 +95,14 @@ export const create = async (fileData: {
 export const findById = async (fileId: number): Promise<FileRecord | null> => {
   try {
     const file = await queryOne<FileRecord>(
-      'SELECT * FROM files WHERE id = ?',
+      `SELECT
+        f.*,
+        et.lookup_value as entity_type,
+        fr.lookup_value as file_role
+      FROM files f
+      LEFT JOIN lookups et ON f.entity_type_id = et.id
+      LEFT JOIN lookups fr ON f.file_role_id = fr.id
+      WHERE f.id = ?`,
       [fileId]
     );
     return file;
@@ -89,7 +120,15 @@ export const findByEntity = async (
 ): Promise<FileRecord[]> => {
   try {
     const files = await query<FileRecord[]>(
-      'SELECT * FROM files WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC',
+      `SELECT
+        f.*,
+        et.lookup_value as entity_type,
+        fr.lookup_value as file_role
+      FROM files f
+      LEFT JOIN lookups et ON f.entity_type_id = et.id
+      LEFT JOIN lookups fr ON f.file_role_id = fr.id
+      WHERE et.lookup_value = ? AND f.entity_id = ?
+      ORDER BY f.created_at DESC`,
       [entityType, entityId]
     );
     return files;
@@ -104,7 +143,15 @@ export const findByEntity = async (
 export const findByUser = async (userId: number): Promise<FileRecord[]> => {
   try {
     const files = await query<FileRecord[]>(
-      'SELECT * FROM files WHERE uploaded_by = ? ORDER BY created_at DESC',
+      `SELECT
+        f.*,
+        et.lookup_value as entity_type,
+        fr.lookup_value as file_role
+      FROM files f
+      LEFT JOIN lookups et ON f.entity_type_id = et.id
+      LEFT JOIN lookups fr ON f.file_role_id = fr.id
+      WHERE f.uploaded_by = ?
+      ORDER BY f.created_at DESC`,
       [userId]
     );
     return files;
@@ -132,10 +179,13 @@ export const deleteByEntity = async (
   entityId: number
 ): Promise<void> => {
   try {
-    await query('DELETE FROM files WHERE entity_type = ? AND entity_id = ?', [
-      entityType,
-      entityId,
-    ]);
+    await query(
+      `DELETE f
+       FROM files f
+       INNER JOIN lookups et ON f.entity_type_id = et.id
+       WHERE et.lookup_value = ? AND f.entity_id = ?`,
+      [entityType, entityId]
+    );
   } catch (error) {
     throw new DatabaseError('Failed to delete files by entity');
   }
@@ -147,17 +197,19 @@ export const deleteByEntity = async (
 export const toFileResponse = (file: FileRecord) => {
   return {
     id: file.id,
-    filename: file.filename,
+    filename: file.stored_name,
+    stored_name: file.stored_name,
     original_name: file.original_name,
     mime_type: file.mime_type,
-    size: file.size,
-    size_formatted: formatFileSize(file.size),
+    size_bytes: file.size_bytes,
+    size_formatted: formatFileSize(file.size_bytes || 0),
     extension: getFileExtension(file.original_name),
-    path: file.path,
+    path: file.file_path,
+    file_path: file.file_path,
     entity_type: file.entity_type,
     entity_id: file.entity_id,
+    file_role: file.file_role,
     uploaded_by: file.uploaded_by,
     created_at: file.created_at,
-    updated_at: file.updated_at,
   };
 };
