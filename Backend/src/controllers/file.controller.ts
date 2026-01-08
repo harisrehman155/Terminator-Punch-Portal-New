@@ -147,3 +147,27 @@ export const getMyFiles = asyncHandler(async (req: Request, res: Response) => {
 
   return successResponse(res, 'Your files retrieved successfully', files);
 });
+
+/**
+ * Download file by ID
+ * GET /api/files/:fileId/download
+ */
+export const downloadFile = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ValidationError('User not authenticated');
+  }
+
+  const fileId = parseInt(req.params.fileId);
+
+  if (isNaN(fileId)) {
+    throw new ValidationError('Invalid file ID');
+  }
+
+  const file = await FileService.getFileForDownload(
+    fileId,
+    req.user.userId,
+    req.user.role
+  );
+
+  return res.download(file.file_path, file.original_name);
+});

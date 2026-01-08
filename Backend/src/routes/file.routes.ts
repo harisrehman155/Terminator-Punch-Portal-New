@@ -98,4 +98,10 @@ router.delete('/:fileId', authenticate, FileController.deleteFile);
  */
 router.get('/my-files', authenticate, FileController.getMyFiles);
 
+/**
+ * GET /api/files/:fileId/download
+ * Download file by ID
+ */
+router.get('/:fileId/download', authenticate, FileController.downloadFile);
+
 export default router;

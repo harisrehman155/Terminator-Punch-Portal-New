@@ -127,9 +127,9 @@ export const findByEntity = async (
       FROM files f
       LEFT JOIN lookups et ON f.entity_type_id = et.id
       LEFT JOIN lookups fr ON f.file_role_id = fr.id
-      WHERE et.lookup_value = ? AND f.entity_id = ?
+      WHERE LOWER(et.lookup_value) = ? AND f.entity_id = ?
       ORDER BY f.created_at DESC`,
-      [entityType, entityId]
+      [entityType.toLowerCase(), entityId]
     );
     return files;
   } catch (error) {
@@ -183,8 +183,8 @@ export const deleteByEntity = async (
       `DELETE f
        FROM files f
        INNER JOIN lookups et ON f.entity_type_id = et.id
-       WHERE et.lookup_value = ? AND f.entity_id = ?`,
-      [entityType, entityId]
+       WHERE LOWER(et.lookup_value) = ? AND f.entity_id = ?`,
+      [entityType.toLowerCase(), entityId]
     );
   } catch (error) {
     throw new DatabaseError('Failed to delete files by entity');

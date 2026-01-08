@@ -246,3 +246,50 @@ export const getUserFiles = async (userId: number): Promise<any[]> => {
   const files = await FileModel.findByUser(userId);
   return files.map(FileModel.toFileResponse);
 };
+
+/**
+ * Get file record for download with authorization
+ */
+export const getFileForDownload = async (
+  fileId: number,
+  userId: number,
+  userRole: string
+): Promise<FileModel.FileRecord> => {
+  const file = await FileModel.findById(fileId);
+  if (!file) {
+    throw new NotFoundError('File not found');
+  }
+
+  if (userRole !== 'ADMIN') {
+    if (file.uploaded_by === userId) {
+      return file;
+    }
+
+    const entityType = (file.entity_type || '').toUpperCase();
+    if (entityType === 'ORDER') {
+      const order = await OrderModel.findById(file.entity_id);
+      if (!order) {
+        throw new NotFoundError('Order not found');
+      }
+      if (order.user_id !== userId) {
+        throw new ForbiddenError('You do not have permission to access this file');
+      }
+    } else if (entityType === 'QUOTE') {
+      const quote = await QuoteModel.findById(file.entity_id);
+      if (!quote) {
+        throw new NotFoundError('Quote not found');
+      }
+      if (quote.user_id !== userId) {
+        throw new ForbiddenError('You do not have permission to access this file');
+      }
+    } else {
+      throw new ForbiddenError('You do not have permission to access this file');
+    }
+  }
+
+  if (!file.file_path || !fs.existsSync(file.file_path)) {
+    throw new NotFoundError('File not found on disk');
+  }
+
+  return file;
+};
