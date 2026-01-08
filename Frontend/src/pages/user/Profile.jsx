@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
   Card,
@@ -12,155 +13,195 @@ import {
 import { Person as PersonIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
-import { dummyUser } from '../../data/dummyUser';
+import { getUserProfile, updateUserProfile } from '../../redux/actions/AuthAction';
+import Loader from '../../components/common/Loader';
+
+const FormSection = ({ title, children }) => (
+  <Paper
+    sx={{
+      p: 3,
+      mb: 3,
+      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+    }}
+  >
+    <Typography variant="subtitle1" fontWeight={600} mb={2}>
+      {title}
+    </Typography>
+    {children}
+  </Paper>
+);
 
 const Profile = () => {
+  const dispatch = useDispatch();
+  const { user, loading, error } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({
-    name: dummyUser.name,
-    email: dummyUser.email,
-    company: dummyUser.company,
-    phone: dummyUser.phone,
-    address: dummyUser.address,
-    city: dummyUser.city,
-    country: dummyUser.country,
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    address: '',
+    city: '',
+    country: '',
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 🔒 Flag to prevent re-setting form while typing
+  const isFormInitialized = useRef(false);
+
+  // Load profile once
+  useEffect(() => {
+    if (!user) {
+      dispatch(getUserProfile());
+    }
+  }, [dispatch, user]);
+
+  // Initialize form ONLY ONCE when user data arrives
+  useEffect(() => {
+    if (user && !isFormInitialized.current) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        company: user.company || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        city: user.city || '',
+        country: user.country || '',
+      });
+      isFormInitialized.current = true;
+    }
+  }, [user]);
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success('Profile updated successfully');
+    setIsSubmitting(true);
+
+    try {
+      const result = await dispatch(updateUserProfile(formData));
+
+      if (result?.success) {
+        toast.success(result.message || 'Profile updated successfully');
+      } else {
+        toast.error(result?.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      toast.error('Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Section wrapper component for consistent styling
-  const FormSection = ({ title, children }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 3,
-        mb: 3,
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.02),
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-      }}
-    >
-      <Typography
-        variant="subtitle1"
-        fontWeight={600}
-        color="primary"
-        sx={{ mb: 2.5, display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        {title}
-      </Typography>
-      {children}
-    </Paper>
-  );
+  if (loading && !user) {
+    return (
+      <Box>
+        <PageHeader title="Profile" />
+        <Loader />
+      </Box>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <Box textAlign="center">
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
-      <PageHeader
-        title="Profile"
-        breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Profile' }]}
-      />
+      <PageHeader title="Profile" />
 
-      <Card sx={{ maxWidth: 800, mx: 'auto', boxShadow: 3 }}>
-        <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+      <Card sx={{ maxWidth: 800, mx: 'auto' }}>
+        <CardContent>
           <Box component="form" onSubmit={handleSubmit}>
             <FormSection title="Personal Information">
               <Box
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2.5,
+                  gap: 2,
                 }}
               >
                 <TextField
-                  fullWidth
                   label="Full Name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  required
+                  fullWidth
                 />
 
                 <TextField
-                  fullWidth
                   label="Email"
                   name="email"
-                  type="email"
                   value={formData.email}
-                  onChange={handleChange}
-                  required
                   disabled
+                  fullWidth
                 />
 
                 <TextField
-                  fullWidth
                   label="Company"
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
+                  fullWidth
                 />
 
                 <TextField
-                  fullWidth
                   label="Phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  fullWidth
                 />
 
                 <TextField
-                  fullWidth
                   label="Address"
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  sx={{ gridColumn: { xs: '1', sm: '1 / -1' } }}
+                  fullWidth
+                  sx={{ gridColumn: '1 / -1' }}
                 />
 
                 <TextField
-                  fullWidth
                   label="City"
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
+                  fullWidth
                 />
 
                 <TextField
-                  fullWidth
                   label="Country"
                   name="country"
                   value={formData.country}
                   onChange={handleChange}
+                  fullWidth
                 />
               </Box>
             </FormSection>
 
-            {/* Submit Buttons */}
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2,
-                justifyContent: 'flex-end',
-                pt: 2,
-                borderTop: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
+            <Box textAlign="right">
               <Button
                 type="submit"
                 variant="contained"
                 startIcon={<PersonIcon />}
-                sx={{ minWidth: 160 }}
+                disabled={isSubmitting}
               >
-                Save Changes
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
               </Button>
             </Box>
           </Box>
