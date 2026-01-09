@@ -150,7 +150,31 @@ const AdminQuotes = () => {
       field: 'created_at',
       headerName: 'Created',
       width: 150,
-      valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
+      renderCell: (params) => {
+        const value =
+          params?.row?.created_at ||
+          params?.row?.createdAt ||
+          params?.row?.created ||
+          params?.row?.created_date ||
+          params?.row?.createdDate ||
+          params?.row?.updated_at ||
+          params?.row?.updatedAt ||
+          params?.row?.updated ||
+          params?.row?.updated_date ||
+          params?.row?.updatedDate ||
+          null;
+        if (!value) {
+          return '-';
+        }
+        return new Date(value).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      },
     },
     {
       field: 'actions',
