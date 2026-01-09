@@ -31,6 +31,7 @@ const OrdersList = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [orders, setOrders] = useState([]);
+  const [adminUploadMap, setAdminUploadMap] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -56,6 +57,38 @@ const OrdersList = () => {
         const list = response?.data?.orders || [];
         if (isMounted) {
           setOrders(list);
+        }
+
+        if (list.length > 0) {
+          const uploadResults = await Promise.all(
+            list.map(async (order) => {
+              try {
+                const filesResponse = await apiService({
+                  method: HttpMethod.GET,
+                  endPoint: `/files/orders/${order.id}`,
+                  token,
+                });
+                const files = filesResponse?.data || [];
+                const hasAdminFiles = files.some(
+                  (file) =>
+                    String(file.file_role || '').toUpperCase() === 'ADMIN_RESPONSE'
+                );
+                return { id: order.id, hasAdminFiles };
+              } catch (fileError) {
+                return { id: order.id, hasAdminFiles: false };
+              }
+            })
+          );
+
+          if (isMounted) {
+            const map = {};
+            uploadResults.forEach((result) => {
+              map[result.id] = result.hasAdminFiles;
+            });
+            setAdminUploadMap(map);
+          }
+        } else if (isMounted) {
+          setAdminUploadMap({});
         }
       } catch (error) {
         const message = error?.apiMessage || error?.message || 'Failed to load orders';
@@ -218,8 +251,31 @@ const OrdersList = () => {
       field: 'created_at',
       headerName: 'Created',
       width: 180,
-      valueFormatter: (params) =>
-        params.value ? new Date(params.value).toLocaleDateString() : '-',
+      renderCell: (params) => {
+        const value =
+          params?.row?.created_at ||
+          params?.row?.createdAt ||
+          params?.row?.created ||
+          params?.row?.created_date ||
+          params?.row?.createdDate ||
+          params?.row?.updated_at ||
+          params?.row?.updatedAt ||
+          params?.row?.updated ||
+          params?.row?.updated_date ||
+          params?.row?.updatedDate ||
+          null;
+        if (!value) {
+          return '-';
+        }
+        return new Date(value).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      },
     },
     {
       field: 'actions',
@@ -251,18 +307,20 @@ const OrdersList = () => {
               <Edit fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Download all files">
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadAll(params.row);
-              }}
-            >
-              <Download fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {adminUploadMap[params.row.id] && (
+            <Tooltip title="Download all files">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadAll(params.row);
+                }}
+              >
+                <Download fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Delete">
             <IconButton
               size="small"

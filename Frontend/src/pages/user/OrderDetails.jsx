@@ -36,6 +36,7 @@ const OrderDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const user = useSelector((state) => state.auth.user);
   const [tabValue, setTabValue] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -239,6 +240,83 @@ const OrderDetails = () => {
     order.width && order.height
       ? `${order.width} x ${order.height} ${order.unit || ''}`.trim()
       : '-';
+  const normalizedFiles = files.map((file) => ({
+    ...file,
+    file_role: file.file_role ? String(file.file_role).toUpperCase() : '',
+  }));
+  const customerFiles = normalizedFiles.filter((file) => {
+    if (file.file_role === 'CUSTOMER_UPLOAD' || file.file_role === 'ATTACHMENT') {
+      return true;
+    }
+    if (file.file_role === 'ADMIN_RESPONSE') {
+      return false;
+    }
+    if (user?.id && file.uploaded_by) {
+      return file.uploaded_by === user.id;
+    }
+    return false;
+  });
+  const adminFiles = normalizedFiles.filter((file) => {
+    if (file.file_role === 'ADMIN_RESPONSE') {
+      return true;
+    }
+    if (file.file_role === 'CUSTOMER_UPLOAD' || file.file_role === 'ATTACHMENT') {
+      return false;
+    }
+    if (user?.id && file.uploaded_by) {
+      return file.uploaded_by !== user.id;
+    }
+    return false;
+  });
+
+  const renderFilesTable = (list) => {
+    if (list.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          No files uploaded yet.
+        </Typography>
+      );
+    }
+    return (
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>File Name</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Size</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {list.map((file) => (
+              <TableRow key={file.id}>
+                <TableCell>{file.original_name}</TableCell>
+                <TableCell>{file.mime_type}</TableCell>
+                <TableCell>
+                  {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
+                </TableCell>
+                <TableCell>
+                  {file.file_role ? file.file_role.replace('_', ' ') : '-'}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="small"
+                    startIcon={<Download />}
+                    variant="outlined"
+                    onClick={() => handleDownload(file)}
+                  >
+                    Download
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
 
   return (
     <Box>
@@ -385,49 +463,18 @@ const OrderDetails = () => {
           {/* Files Tab */}
           {tabValue === 1 && (
             <DetailSection title="Files">
-              {files.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No files uploaded yet.
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                  Your Uploads
                 </Typography>
-              ) : (
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>File Name</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Size</TableCell>
-                        <TableCell>Role</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {files.map((file) => (
-                        <TableRow key={file.id}>
-                          <TableCell>{file.original_name}</TableCell>
-                          <TableCell>{file.mime_type}</TableCell>
-                          <TableCell>
-                            {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {file.file_role ? file.file_role.replace('_', ' ') : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="small"
-                              startIcon={<Download />}
-                              variant="outlined"
-                              onClick={() => handleDownload(file)}
-                            >
-                              Download
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+                {renderFilesTable(customerFiles)}
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                  Admin Responses
+                </Typography>
+                {renderFilesTable(adminFiles)}
+              </Box>
             </DetailSection>
           )}
 
