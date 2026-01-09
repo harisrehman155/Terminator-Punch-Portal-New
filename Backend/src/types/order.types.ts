@@ -72,6 +72,7 @@ export interface OrderListFilters {
   user_id?: number;
   order_type?: OrderType;
   status?: OrderStatus;
+  exclude_statuses?: OrderStatus[];
   is_urgent?: number;
   search?: string; // Search by order_no or design_name
   from_date?: string; // ISO date string

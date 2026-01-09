@@ -102,6 +102,9 @@ export const getOrders = async (
   // If user is not admin, force filter to their own orders
   if (userRole !== 'ADMIN') {
     filters.user_id = userId;
+    if (!filters.exclude_statuses) {
+      filters.exclude_statuses = ['CANCELLED'];
+    }
   }
 
   const orders = await OrderModel.findAllWithUser(filters);

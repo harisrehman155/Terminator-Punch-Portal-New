@@ -269,6 +269,12 @@ export const findAll = async (
       params.push(filters.status);
     }
 
+    if (filters.exclude_statuses && filters.exclude_statuses.length > 0) {
+      const placeholders = filters.exclude_statuses.map(() => '?').join(', ');
+      sql += ` AND s.lookup_value NOT IN (${placeholders})`;
+      params.push(...filters.exclude_statuses);
+    }
+
     if (filters.is_urgent !== undefined) {
       sql += ' AND o.is_urgent = ?';
       params.push(filters.is_urgent);
@@ -349,6 +355,12 @@ export const findAllWithUser = async (
     if (filters.status) {
       sql += ' AND s.lookup_value = ?';
       params.push(filters.status);
+    }
+
+    if (filters.exclude_statuses && filters.exclude_statuses.length > 0) {
+      const placeholders = filters.exclude_statuses.map(() => '?').join(', ');
+      sql += ` AND s.lookup_value NOT IN (${placeholders})`;
+      params.push(...filters.exclude_statuses);
     }
 
     if (filters.is_urgent !== undefined) {
@@ -586,6 +598,12 @@ export const count = async (filters: OrderListFilters = {}): Promise<number> => 
     if (filters.status) {
       sql += ' AND s.lookup_value = ?';
       params.push(filters.status);
+    }
+
+    if (filters.exclude_statuses && filters.exclude_statuses.length > 0) {
+      const placeholders = filters.exclude_statuses.map(() => '?').join(', ');
+      sql += ` AND s.lookup_value NOT IN (${placeholders})`;
+      params.push(...filters.exclude_statuses);
     }
 
     if (filters.is_urgent !== undefined) {
