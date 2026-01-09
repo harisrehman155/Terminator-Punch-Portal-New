@@ -172,7 +172,7 @@ const OrdersList = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/files/orders/${order.id}/download-all`,
+        `${API_BASE_URL}/files/orders/${order.id}/download-all?scope=admin`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

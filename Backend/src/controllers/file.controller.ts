@@ -190,19 +190,30 @@ export const downloadOrderFilesZip = asyncHandler(
       throw new ValidationError('Invalid order ID');
     }
 
+    const scopeParam = typeof req.query.scope === 'string' ? req.query.scope : '';
+    const allowedScopes = ['admin', 'customer', 'all'];
+    let scope = scopeParam ? scopeParam.toLowerCase() : '';
+    if (!allowedScopes.includes(scope)) {
+      scope = req.user.role === 'ADMIN' ? 'all' : 'admin';
+    }
+    if (req.user.role !== 'ADMIN' && scope !== 'admin') {
+      scope = 'admin';
+    }
+
     const files = await FileService.getOrderFiles(
       orderId,
       req.user.userId,
       req.user.role
     );
 
-    const validFiles = files.filter((file) => file.file_path && fs.existsSync(file.file_path));
+    const scopedFiles = FileService.filterOrderFilesByScope(files, scope);
+    const validFiles = scopedFiles.filter((file) => file.file_path && fs.existsSync(file.file_path));
 
     if (validFiles.length === 0) {
       throw new ValidationError('No files available for download');
     }
 
-    const zipName = `order-${orderId}-files.zip`;
+    const zipName = `order-${orderId}-${scope}-files.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
 
