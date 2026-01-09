@@ -121,13 +121,13 @@ const AdminUsers = () => {
       field: 'company',
       headerName: 'Company',
       width: 200,
-      valueFormatter: (params) => params.value || '-',
+      renderCell: (params) => (params?.row?.company ? params.row.company : '-'),
     },
     {
       field: 'role',
       headerName: 'Role',
       width: 120,
-      valueFormatter: (params) => params.value || '-',
+      renderCell: (params) => (params?.row?.role ? params.row.role : '-'),
     },
     {
       field: 'is_active',
@@ -146,8 +146,31 @@ const AdminUsers = () => {
       field: 'created_at',
       headerName: 'Created',
       width: 180,
-      valueFormatter: (params) =>
-        params.value ? new Date(params.value).toLocaleDateString() : '-',
+      renderCell: (params) => {
+        const value =
+          params?.row?.created_at ||
+          params?.row?.createdAt ||
+          params?.row?.created ||
+          params?.row?.created_date ||
+          params?.row?.createdDate ||
+          params?.row?.updated_at ||
+          params?.row?.updatedAt ||
+          params?.row?.updated ||
+          params?.row?.updated_date ||
+          params?.row?.updatedDate ||
+          null;
+        if (!value) {
+          return '-';
+        }
+        return new Date(value).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      },
     },
   ];
 

@@ -120,6 +120,10 @@ export const uploadOrderFile = async (
     uploaded_by: userId,
   });
 
+  if (userRole === 'ADMIN' && order.status !== 'COMPLETED') {
+    await OrderModel.updateStatus(orderId, 'COMPLETED');
+  }
+
   return FileModel.toFileResponse(fileRecord);
 };
 

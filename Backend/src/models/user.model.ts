@@ -272,7 +272,12 @@ export const clearResetToken = async (userId: number): Promise<void> => {
 export const findAll = async (): Promise<User[]> => {
   try {
     const users = await query<User[]>(
-      'SELECT * FROM users ORDER BY created_at DESC'
+      `SELECT
+        u.*,
+        l.lookup_value as role
+      FROM users u
+      LEFT JOIN lookups l ON u.role_id = l.id
+      ORDER BY u.created_at DESC`
     );
     return users;
   } catch (error) {
