@@ -138,6 +138,33 @@ export const findByEntity = async (
 };
 
 /**
+ * Find files by entity and role
+ */
+export const findByEntityAndRole = async (
+  entityType: 'order' | 'quote',
+  entityId: number,
+  fileRole: string
+): Promise<FileRecord[]> => {
+  try {
+    const files = await query<FileRecord[]>(
+      `SELECT
+        f.*,
+        et.lookup_value as entity_type,
+        fr.lookup_value as file_role
+      FROM files f
+      LEFT JOIN lookups et ON f.entity_type_id = et.id
+      LEFT JOIN lookups fr ON f.file_role_id = fr.id
+      WHERE LOWER(et.lookup_value) = ? AND f.entity_id = ? AND fr.lookup_value = ?
+      ORDER BY f.created_at DESC`,
+      [entityType.toLowerCase(), entityId, fileRole]
+    );
+    return files;
+  } catch (error) {
+    throw new DatabaseError('Failed to find files by entity and role');
+  }
+};
+
+/**
  * Find files by user
  */
 export const findByUser = async (userId: number): Promise<FileRecord[]> => {

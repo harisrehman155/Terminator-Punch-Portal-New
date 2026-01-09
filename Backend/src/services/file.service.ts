@@ -80,9 +80,22 @@ export const uploadOrderFile = async (
     throw new ForbiddenError('You do not have permission to upload files to this order');
   }
 
+  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
+  const roleFolder = userRole === 'ADMIN' ? 'admin' : 'customer';
+  const orderFolder = order.order_no || orderId.toString();
+  const orderDir = path.join(UPLOAD_DIR, 'orders', orderFolder, roleFolder);
+
+  // Remove previous files for this role before saving the new one.
+  const existingFiles = await FileModel.findByEntityAndRole('order', orderId, fileRole);
+  for (const existingFile of existingFiles) {
+    if (existingFile.file_path && fs.existsSync(existingFile.file_path)) {
+      fs.unlinkSync(existingFile.file_path);
+    }
+    await FileModel.deleteById(existingFile.id);
+  }
+
   // Generate unique filename and move file
   const uniqueFilename = generateUniqueFilename(file.originalname);
-  const orderDir = path.join(UPLOAD_DIR, 'orders', orderId.toString());
 
   // Ensure directory exists
   if (!fs.existsSync(orderDir)) {
@@ -95,7 +108,6 @@ export const uploadOrderFile = async (
   fs.renameSync(file.path, filePath);
 
   // Create file record in database
-  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
   const fileRecord = await FileModel.create({
     stored_name: uniqueFilename,
     original_name: file.originalname,
@@ -237,6 +249,25 @@ export const deleteFile = async (
 
   // Delete database record
   await FileModel.deleteById(fileId);
+};
+
+/**
+ * Filter order files by scope
+ */
+export const filterOrderFilesByScope = (files: FileModel.FileRecord[], scope: string) => {
+  const normalizedScope = (scope || '').toLowerCase();
+  if (normalizedScope === 'admin') {
+    return files.filter(
+      (file) => String(file.file_role || '').toUpperCase() === 'ADMIN_RESPONSE'
+    );
+  }
+  if (normalizedScope === 'customer') {
+    return files.filter((file) => {
+      const role = String(file.file_role || '').toUpperCase();
+      return role === 'CUSTOMER_UPLOAD' || role === 'ATTACHMENT';
+    });
+  }
+  return files;
 };
 
 /**
