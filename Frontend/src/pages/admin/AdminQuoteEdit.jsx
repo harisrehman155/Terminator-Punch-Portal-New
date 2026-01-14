@@ -19,10 +19,14 @@ import {
   Stack,
   Paper,
   alpha,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
   BoltOutlined as UrgentIcon,
+  Download as DownloadIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
@@ -218,6 +222,31 @@ const AdminQuoteEdit = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       const message = error?.message || 'Failed to download file';
+      toast.error(message);
+    }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    if (!token) {
+      toast.error('Please log in again to delete the file');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this file?')) {
+      return;
+    }
+
+    try {
+      const response = await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/files/${fileId}`,
+        token,
+      });
+
+      toast.success('File deleted successfully');
+      setQuoteFiles(quoteFiles.filter((file) => file.id !== fileId));
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete file';
       toast.error(message);
     }
   };
@@ -597,15 +626,43 @@ const AdminQuoteEdit = () => {
                   </Box>
                 )}
                 {quoteFiles.length > 0 && (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {quoteFiles.map((file) => (
-                      <Chip
+                      <Box
                         key={file.id}
-                        label={file.original_name}
-                        size="small"
-                        onClick={() => handleDownload(file)}
-                        sx={{ cursor: 'pointer' }}
-                      />
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          p: 1,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          bgcolor: 'background.paper',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ flex: 1 }}>
+                          {file.original_name}
+                        </Typography>
+                        <Tooltip title="Download">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDownload(file)}
+                            color="primary"
+                          >
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteFile(file.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     ))}
                   </Box>
                 )}
