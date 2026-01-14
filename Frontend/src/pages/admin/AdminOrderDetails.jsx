@@ -24,8 +24,10 @@ import {
   Stack,
   alpha,
   CircularProgress,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
-import { Download, Upload } from '@mui/icons-material';
+import { Download, Upload, Delete } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import { toast } from 'react-toastify';
@@ -293,6 +295,31 @@ const AdminOrderDetails = () => {
     }
   };
 
+  const handleDeleteFile = async (fileId) => {
+    if (!token) {
+      toast.error('Please log in again to delete the file');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this file?')) {
+      return;
+    }
+
+    try {
+      const response = await apiService({
+        method: HttpMethod.DELETE,
+        endPoint: `/files/${fileId}`,
+        token,
+      });
+
+      toast.success('File deleted successfully');
+      setFiles(files.filter((file) => file.id !== fileId));
+    } catch (error) {
+      const message = error?.apiMessage || error?.message || 'Failed to delete file';
+      toast.error(message);
+    }
+  };
+
   const DetailSection = ({ title, children }) => (
     <Paper
       elevation={0}
@@ -506,14 +533,26 @@ const AdminOrderDetails = () => {
                             {file.file_role ? file.file_role.replace('_', ' ') : '-'}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="small"
-                              startIcon={<Download />}
-                              variant="outlined"
-                              onClick={() => handleDownload(file)}
-                            >
-                              Download
-                            </Button>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Tooltip title="Download">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDownload(file)}
+                                  color="primary"
+                                >
+                                  <Download fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteFile(file.id)}
+                                  color="error"
+                                >
+                                  <Delete fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))}
