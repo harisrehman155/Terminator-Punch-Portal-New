@@ -85,15 +85,6 @@ export const uploadOrderFile = async (
   const orderFolder = order.order_no || orderId.toString();
   const orderDir = path.join(UPLOAD_DIR, 'orders', orderFolder, roleFolder);
 
-  // Remove previous files for this role before saving the new one.
-  const existingFiles = await FileModel.findByEntityAndRole('order', orderId, fileRole);
-  for (const existingFile of existingFiles) {
-    if (existingFile.file_path && fs.existsSync(existingFile.file_path)) {
-      fs.unlinkSync(existingFile.file_path);
-    }
-    await FileModel.deleteById(existingFile.id);
-  }
-
   // Generate unique filename and move file
   const uniqueFilename = generateUniqueFilename(file.originalname);
 
@@ -150,9 +141,13 @@ export const uploadQuoteFile = async (
     throw new ForbiddenError('You do not have permission to upload files to this quote');
   }
 
+  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
+  const roleFolder = userRole === 'ADMIN' ? 'admin' : 'customer';
+  const quoteFolder = quote.quote_no || quoteId.toString();
+  const quoteDir = path.join(UPLOAD_DIR, 'quotes', quoteFolder, roleFolder);
+
   // Generate unique filename and move file
   const uniqueFilename = generateUniqueFilename(file.originalname);
-  const quoteDir = path.join(UPLOAD_DIR, 'quotes', quoteId.toString());
 
   // Ensure directory exists
   if (!fs.existsSync(quoteDir)) {
@@ -165,7 +160,6 @@ export const uploadQuoteFile = async (
   fs.renameSync(file.path, filePath);
 
   // Create file record in database
-  const fileRole = userRole === 'ADMIN' ? 'ADMIN_RESPONSE' : 'CUSTOMER_UPLOAD';
   const fileRecord = await FileModel.create({
     stored_name: uniqueFilename,
     original_name: file.originalname,
@@ -280,6 +274,61 @@ export const filterOrderFilesByScope = (files: FileModel.FileRecord[], scope: st
 export const getUserFiles = async (userId: number): Promise<any[]> => {
   const files = await FileModel.findByUser(userId);
   return files.map(FileModel.toFileResponse);
+};
+
+/**
+ * Copy quote files to order when quote is converted
+ */
+export const copyQuoteFilesToOrder = async (
+  quoteId: number,
+  orderId: number,
+  quoteNo: string,
+  orderNo: string
+): Promise<void> => {
+  const quoteFiles = await FileModel.findByEntity('quote', quoteId);
+
+  // Only copy customer uploaded files (not admin responses)
+  const customerFiles = quoteFiles.filter(
+    (file) => String(file.file_role || '').toUpperCase() === 'CUSTOMER_UPLOAD'
+  );
+
+  for (const quoteFile of customerFiles) {
+    try {
+      // Source and destination paths
+      const quoteFolder = quoteNo || quoteId.toString();
+      const orderFolder = orderNo || orderId.toString();
+
+      const sourcePath = quoteFile.file_path;
+      const destDir = path.join(UPLOAD_DIR, 'orders', orderFolder, 'customer');
+      const destPath = path.join(destDir, quoteFile.stored_name);
+
+      // Ensure destination directory exists
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+
+      // Copy the physical file
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, destPath);
+
+        // Create new file record for the order
+        await FileModel.create({
+          stored_name: quoteFile.stored_name,
+          original_name: quoteFile.original_name,
+          mime_type: quoteFile.mime_type,
+          size_bytes: quoteFile.size_bytes,
+          file_path: destPath,
+          entity_type: 'ORDER',
+          file_role: 'CUSTOMER_UPLOAD',
+          entity_id: orderId,
+          uploaded_by: quoteFile.uploaded_by,
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to copy file ${quoteFile.id} from quote to order:`, error);
+      // Continue with other files even if one fails
+    }
+  }
 };
 
 /**
