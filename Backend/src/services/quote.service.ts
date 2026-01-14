@@ -1,6 +1,7 @@
 import * as QuoteModel from '../models/quote.model';
 import * as OrderService from './order.service';
 import * as OrderModel from '../models/order.model';
+import * as FileService from './file.service';
 import {
   Quote,
   QuoteCreateInput,
@@ -270,6 +271,19 @@ export const convertQuoteToOrder = async (
 
   // Update quote status to CONVERTED
   await QuoteModel.convertToOrder(quoteId, order.id);
+
+  // Copy quote files to order
+  try {
+    await FileService.copyQuoteFilesToOrder(
+      quoteId,
+      order.id,
+      existingQuote.quote_no!,
+      order.order_no
+    );
+  } catch (error) {
+    console.error('Failed to copy files from quote to order:', error);
+    // Don't fail the conversion if file copying fails
+  }
 
   return {
     quote: QuoteModel.toQuoteResponse(await QuoteModel.findById(quoteId)!),
