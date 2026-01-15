@@ -20,6 +20,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { lookups } from '../../data/dummyLookups';
 import apiService, { HttpMethod } from '../../api/ApiService';
 import { API_BASE_URL } from '../../utils/Constants';
@@ -224,6 +225,7 @@ const OrdersList = () => {
       field: 'order_type',
       headerName: 'Type',
       width: 120,
+      renderCell: (params) => <TypeChip type={params.value} />,
     },
     {
       field: 'design_name',

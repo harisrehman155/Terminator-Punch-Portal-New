@@ -32,6 +32,7 @@ import {
 import { Edit, Delete, Download, AttachMoney, ShoppingCart } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { toast } from 'react-toastify';
 import apiService, { HttpMethod } from '../../api/ApiService';
 import { API_BASE_URL } from '../../utils/Constants';
@@ -408,7 +409,9 @@ const AdminQuoteDetails = () => {
                   gap: 3,
                 }}
               >
-                <DetailRow label="Quote Type" value={quote.service_type} />
+                <DetailRow label="Quote Type">
+                  <TypeChip type={quote.service_type} />
+                </DetailRow>
                 <DetailRow label="Size" value={sizeLabel} />
                 {quote.number_of_colors && (
                   <DetailRow label="Number of Colors" value={quote.number_of_colors} />

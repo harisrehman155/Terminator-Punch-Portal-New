@@ -7,12 +7,14 @@ import {
   Typography,
   Chip,
   Button,
+  IconButton,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -35,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { toast } from 'react-toastify';
 import { useEffect, useState } from 'react';
 import apiService, { HttpMethod } from '../../api/ApiService';
@@ -360,7 +363,9 @@ const QuoteDetails = () => {
                   gap: 3,
                 }}
               >
-                <DetailRow label="Quote Type" value={quote.service_type || quote.quote_type} />
+                <DetailRow label="Quote Type">
+                  <TypeChip type={quote.service_type || quote.quote_type} />
+                </DetailRow>
                 <DetailRow label="Size" value={sizeLabel} />
                 {quote.number_of_colors && (
                   <DetailRow label="Number of Colors" value={quote.number_of_colors} />
@@ -435,14 +440,17 @@ const QuoteDetails = () => {
                           {file.file_role ? file.file_role.replace('_', ' ') : '-'}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="small"
-                            startIcon={<Download />}
-                            variant="outlined"
-                            onClick={() => handleDownload(file)}
-                          >
-                            Download
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="Download">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDownload(file)}
+                                color="primary"
+                              >
+                                <Download fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}

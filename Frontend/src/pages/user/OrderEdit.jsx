@@ -62,6 +62,7 @@ const OrderEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const user = useSelector((state) => state.auth.user);
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,6 +86,19 @@ const OrderEdit = () => {
 
   const fabricOptions = ['Cotton', 'Polyester', 'Linen', 'Denim', 'Wool', 'Other'];
   const colorTypeOptions = ['Full Color', 'Solid', 'Gradient', 'Two Color', 'Multi Color', 'Other'];
+  const customerOrderFiles = orderFiles.filter((file) => {
+    const role = String(file.file_role || '').toUpperCase();
+    if (role === 'ADMIN_RESPONSE') {
+      return false;
+    }
+    if (role === 'CUSTOMER_UPLOAD' || role === 'ATTACHMENT') {
+      return true;
+    }
+    if (user?.id && file.uploaded_by) {
+      return file.uploaded_by === user.id;
+    }
+    return false;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -633,9 +647,9 @@ const OrderEdit = () => {
                     ))}
                   </Box>
                 )}
-                {orderFiles.length > 0 && (
+                {customerOrderFiles.length > 0 && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {orderFiles.map((file) => (
+                    {customerOrderFiles.map((file) => (
                       <Box
                         key={file.id}
                         sx={{

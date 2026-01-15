@@ -20,6 +20,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { lookups } from '../../data/dummyLookups';
 import apiService, { HttpMethod } from '../../api/ApiService';
 
@@ -222,10 +223,7 @@ const QuotesList = () => {
           params.row?.quoteType ||
           params.row?.orderType ||
           '-';
-        if (!value) {
-          return '-';
-        }
-        return String(value).replace('_', ' ');
+        return <TypeChip type={value} />;
       },
     },
     {

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Visibility, Download } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { fetchAdminOrders } from '../../redux/actions/PortalAction';
 import { API_BASE_URL } from '../../utils/Constants';
 
@@ -128,6 +129,7 @@ const AdminOrders = () => {
       field: 'order_type',
       headerName: 'Type',
       width: 120,
+      renderCell: (params) => <TypeChip type={params.value} />,
     },
     {
       field: 'user',
@@ -297,4 +299,3 @@ const AdminOrders = () => {
 };
 
 export default AdminOrders;
-

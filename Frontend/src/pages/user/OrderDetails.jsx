@@ -16,6 +16,7 @@ import {
   TableHead,
   TableRow,
   Button,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -24,10 +25,12 @@ import {
   Paper,
   alpha,
   Stack,
+  Tooltip,
 } from '@mui/material';
 import { Download, Edit, Delete, Cancel } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { toast } from 'react-toastify';
 import apiService, { HttpMethod } from '../../api/ApiService';
 import { API_BASE_URL } from '../../utils/Constants';
@@ -197,6 +200,52 @@ const OrderDetails = () => {
     }
   };
 
+  const handleDownloadAllAdmin = async () => {
+    if (!token) {
+      toast.error('Please log in again to download files');
+      return;
+    }
+    if (!order?.id) {
+      toast.error('Order not found');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/files/orders/${order.id}/download-all?scope=admin`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        let message = 'Failed to download files';
+        try {
+          const payload = await response.json();
+          message = payload?.message || message;
+        } catch (error) {
+          // Ignore JSON parse errors for non-JSON responses.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${order.order_no || `order-${order.id}`}-files.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const message = error?.message || 'Failed to download files';
+      toast.error(message);
+    }
+  };
+
   // Section wrapper component for consistent styling
   const DetailSection = ({ title, children }) => (
     <Paper
@@ -284,8 +333,6 @@ const OrderDetails = () => {
             <TableRow>
               <TableCell>File Name</TableCell>
               <TableCell>Type</TableCell>
-              <TableCell>Size</TableCell>
-              <TableCell>Role</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -295,20 +342,17 @@ const OrderDetails = () => {
                 <TableCell>{file.original_name}</TableCell>
                 <TableCell>{file.mime_type}</TableCell>
                 <TableCell>
-                  {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
-                </TableCell>
-                <TableCell>
-                  {file.file_role ? file.file_role.replace('_', ' ') : '-'}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="small"
-                    startIcon={<Download />}
-                    variant="outlined"
-                    onClick={() => handleDownload(file)}
-                  >
-                    Download
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Download">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownload(file)}
+                        color="primary"
+                      >
+                        <Download fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -403,7 +447,9 @@ const OrderDetails = () => {
                   gap: 3,
                 }}
               >
-                <DetailRow label="Order Type" value={order.order_type} />
+                <DetailRow label="Order Type">
+                  <TypeChip type={order.order_type} />
+                </DetailRow>
                 <DetailRow label="Size" value={sizeLabel} />
                 {order.number_of_colors && (
                   <DetailRow label="Number of Colors" value={order.number_of_colors} />
@@ -470,9 +516,28 @@ const OrderDetails = () => {
                 {renderFilesTable(customerFiles)}
               </Box>
               <Box>
-                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
-                  Admin Responses
-                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Admin Responses
+                  </Typography>
+                  {adminFiles.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Download />}
+                      onClick={handleDownloadAllAdmin}
+                    >
+                      Download All
+                    </Button>
+                  )}
+                </Box>
                 {renderFilesTable(adminFiles)}
               </Box>
             </DetailSection>
