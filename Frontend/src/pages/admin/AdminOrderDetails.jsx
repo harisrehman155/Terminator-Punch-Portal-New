@@ -320,6 +320,83 @@ const AdminOrderDetails = () => {
     }
   };
 
+  // Normalize and filter files by role
+  const normalizedFiles = files.map((file) => ({
+    ...file,
+    file_role: file.file_role ? String(file.file_role).toUpperCase() : '',
+  }));
+
+  const customerFiles = normalizedFiles.filter((file) => {
+    const role = String(file.file_role || '').toUpperCase();
+    return role === 'CUSTOMER_UPLOAD' || role === 'ATTACHMENT';
+  });
+
+  const adminFiles = normalizedFiles.filter((file) => {
+    const role = String(file.file_role || '').toUpperCase();
+    return role === 'ADMIN_RESPONSE';
+  });
+
+  const renderFilesTable = (list) => {
+    if (list.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          No files uploaded yet.
+        </Typography>
+      );
+    }
+    return (
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>File Name</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Size</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {list.map((file) => (
+              <TableRow key={file.id} hover>
+                <TableCell>{file.original_name}</TableCell>
+                <TableCell>{file.mime_type}</TableCell>
+                <TableCell>
+                  {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
+                </TableCell>
+                <TableCell>
+                  {file.file_role ? file.file_role.replace('_', ' ') : '-'}
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Download">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownload(file)}
+                        color="primary"
+                      >
+                        <Download fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteFile(file.id)}
+                        color="error"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   const DetailSection = ({ title, children }) => (
     <Paper
       elevation={0}
@@ -420,7 +497,7 @@ const AdminOrderDetails = () => {
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs value={tabValue} onChange={handleTabChange}>
               <Tab label="Overview" />
-              <Tab label={`Files (${files.length})`} />
+              <Tab label={`Files (${customerFiles.length} customer, ${adminFiles.length} admin)`} />
               <Tab label={`History (${history.length})`} />
             </Tabs>
           </Box>
@@ -494,72 +571,30 @@ const AdminOrderDetails = () => {
 
           {tabValue === 1 && (
             <DetailSection title="Files">
-              <Box mb={2}>
-                <Button
-                  variant="contained"
-                  startIcon={<Upload />}
-                  component="label"
-                  disabled={isUploading}
-                >
-                  {isUploading ? 'Uploading...' : 'Upload Response File'}
-                  <input type="file" hidden multiple onChange={handleFileUpload} />
-                </Button>
-              </Box>
-              {files.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No files uploaded yet.
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                  Customer Files
                 </Typography>
-              ) : (
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>File Name</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Size</TableCell>
-                        <TableCell>Role</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {files.map((file) => (
-                        <TableRow key={file.id} hover>
-                          <TableCell>{file.original_name}</TableCell>
-                          <TableCell>{file.mime_type}</TableCell>
-                          <TableCell>
-                            {file.size_bytes ? `${(file.size_bytes / 1024).toFixed(2)} KB` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {file.file_role ? file.file_role.replace('_', ' ') : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Tooltip title="Download">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDownload(file)}
-                                  color="primary"
-                                >
-                                  <Download fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Delete">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDeleteFile(file.id)}
-                                  color="error"
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+                {renderFilesTable(customerFiles)}
+              </Box>
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Admin Response Files
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<Upload />}
+                    component="label"
+                    disabled={isUploading}
+                  >
+                    {isUploading ? 'Uploading...' : 'Upload Response File'}
+                    <input type="file" hidden multiple onChange={handleFileUpload} />
+                  </Button>
+                </Box>
+                {renderFilesTable(adminFiles)}
+              </Box>
             </DetailSection>
           )}
 
