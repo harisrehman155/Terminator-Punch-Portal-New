@@ -30,6 +30,7 @@ import {
 import { Download, Upload, Delete } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { toast } from 'react-toastify';
 import { API_BASE_URL } from '../../utils/Constants';
 import apiService, { HttpMethod } from '../../api/ApiService';
@@ -512,7 +513,9 @@ const AdminOrderDetails = () => {
                     gap: 3,
                   }}
                 >
-                  <DetailRow label="Order Type" value={order.order_type} />
+                  <DetailRow label="Order Type">
+                    <TypeChip type={order.order_type} />
+                  </DetailRow>
                   <DetailRow label="Size" value={sizeLabel} />
                   {order.number_of_colors && (
                     <DetailRow label="Number of Colors" value={order.number_of_colors} />

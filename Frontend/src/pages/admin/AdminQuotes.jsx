@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Visibility, Warning } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
+import TypeChip from '../../components/common/TypeChip';
 import { fetchAdminQuotes } from '../../redux/actions/PortalAction';
 
 const AdminQuotes = () => {
@@ -112,6 +113,7 @@ const AdminQuotes = () => {
       field: 'service_type',
       headerName: 'Type',
       width: 120,
+      renderCell: (params) => <TypeChip type={params.value} />,
     },
     {
       field: 'design_name',
@@ -285,4 +287,3 @@ const AdminQuotes = () => {
 };
 
 export default AdminQuotes;
-
