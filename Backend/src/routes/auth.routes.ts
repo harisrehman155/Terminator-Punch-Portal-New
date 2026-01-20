@@ -10,6 +10,7 @@ const router = Router();
 
 // Public routes
 router.post('/register', AuthController.register);
+router.post('/verify-registration', AuthController.verifyRegistrationOTP);
 router.post('/login', AuthController.login);
 router.post('/forgot-password', AuthController.forgotPassword);
 router.post('/verify-otp', AuthController.verifyOTP);

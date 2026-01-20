@@ -25,20 +25,39 @@ export const register = async (userData: UserCreateInput) => {
     throw new ConflictError('Email already registered');
   }
 
-  // Create user
-  const user = await UserModel.create(userData);
+  // Create user (inactive until email verified)
+  const user = await UserModel.create(userData, false);
 
-  // Generate JWT token
-  const token = generateToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  });
+  // Generate OTP
+  const otpCode = generateOTP(6);
+  const otpExpiry = getOTPExpiry(parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10));
 
-  // Return user data and token (exclude password)
+  // Save OTP to database
+  await UserModel.setOTP(user.id, otpCode, otpExpiry);
+
+  // Send OTP via email
+  try {
+    await sendRegistrationOTP(
+      user.email,
+      user.name,
+      otpCode,
+      parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10)
+    );
+  } catch (error) {
+    // Log error but don't fail registration
+    console.error('Failed to send registration OTP email:', error);
+    // In development, still return success
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Development OTP for ${user.email}: ${otpCode}`);
+    }
+  }
+
+  // Return success message (no token until verified)
   return {
-    user: UserModel.toUserResponse(user),
-    token,
+    message: 'Registration successful. Please check your email for verification code.',
+    email: user.email,
+    // In development, include OTP in response
+    ...(process.env.NODE_ENV === 'development' && { otp: otpCode }),
   };
 };
 
@@ -92,17 +111,25 @@ export const forgotPassword = async (email: string) => {
 
   // Generate OTP
   const otpCode = generateOTP(6);
-  const otpExpiry = getOTPExpiry(10); // 10 minutes
+  const otpExpiry = getOTPExpiry(parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10));
 
   // Save OTP to database
   await UserModel.setOTP(user.id, otpCode, otpExpiry);
 
-  // TODO: Send OTP via email
-  // await sendOTPEmail(user.email, otpCode);
-
-  // For development, log OTP (remove in production!)
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`OTP for ${email}: ${otpCode}`);
+  // Send OTP via email
+  try {
+    await sendPasswordResetOTP(
+      user.email,
+      user.name,
+      otpCode,
+      parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10)
+    );
+  } catch (error) {
+    console.error('Failed to send password reset OTP email:', error);
+    // In development, still return success
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Development OTP for ${email}: ${otpCode}`);
+    }
   }
 
   return {
@@ -113,7 +140,40 @@ export const forgotPassword = async (email: string) => {
 };
 
 /**
- * Verify OTP
+ * Verify registration OTP
+ */
+export const verifyRegistrationOTP = async (email: string, otpCode: string) => {
+  // Verify OTP
+  const user = await UserModel.verifyOTP(email, otpCode);
+  if (!user) {
+    throw new BadRequestError('Invalid or expired OTP');
+  }
+
+  // Activate user and clear OTP
+  await UserModel.verifyAndActivateUser(user.id);
+
+  // Fetch updated user
+  const updatedUser = await UserModel.findById(user.id);
+  if (!updatedUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  // Generate JWT token
+  const token = generateToken({
+    userId: updatedUser.id,
+    email: updatedUser.email,
+    role: updatedUser.role,
+  });
+
+  return {
+    message: 'Email verified successfully',
+    user: UserModel.toUserResponse(updatedUser),
+    token,
+  };
+};
+
+/**
+ * Verify OTP (for password reset)
  */
 export const verifyOTP = async (email: string, otpCode: string) => {
   // Verify OTP
