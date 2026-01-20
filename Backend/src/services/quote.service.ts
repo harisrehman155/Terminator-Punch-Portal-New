@@ -2,6 +2,12 @@ import * as QuoteModel from '../models/quote.model';
 import * as OrderService from './order.service';
 import * as OrderModel from '../models/order.model';
 import * as FileService from './file.service';
+import * as UserModel from '../models/user.model';
+import {
+  sendAdminQuoteNotification,
+  sendQuotePricedNotification,
+  sendAdminOrderNotification,
+} from './email.service';
 import {
   Quote,
   QuoteCreateInput,
@@ -30,6 +36,18 @@ export const createQuote = async (
   validateQuoteTypeFields(quoteData);
 
   const quote = await QuoteModel.create(userId, quoteData);
+
+  // Send admin notification email (non-blocking)
+  const user = await UserModel.findById(userId);
+  if (user) {
+    sendAdminQuoteNotification(quote, {
+      name: user.name,
+      email: user.email,
+      company: user.company,
+    }).catch((error) => {
+      console.error('Failed to send admin quote notification:', error.message);
+    });
+  }
 
   return QuoteModel.toQuoteResponse(quote);
 };
@@ -222,6 +240,17 @@ export const updateQuotePricing = async (
 
   const updatedQuote = await QuoteModel.updatePricing(quoteId, pricingData);
 
+  // Send customer pricing notification email (non-blocking)
+  const user = await UserModel.findById(existingQuote.user_id);
+  if (user) {
+    sendQuotePricedNotification(updatedQuote, {
+      name: user.name,
+      email: user.email,
+    }).catch((error) => {
+      console.error('Failed to send quote priced notification:', error.message);
+    });
+  }
+
   return QuoteModel.toQuoteResponse(updatedQuote);
 };
 
@@ -267,7 +296,7 @@ export const convertQuoteToOrder = async (
     is_urgent: existingQuote.is_urgent,
   };
 
-  const order = await OrderService.createOrder(existingQuote.user_id, orderData);
+  const order = await OrderService.createOrder(existingQuote.user_id, orderData, true); // skipEmail=true, we send email with quote reference below
 
   // Update quote status to CONVERTED
   await QuoteModel.convertToOrder(quoteId, order.id);
@@ -283,6 +312,22 @@ export const convertQuoteToOrder = async (
   } catch (error) {
     console.error('Failed to copy files from quote to order:', error);
     // Don't fail the conversion if file copying fails
+  }
+
+  // Send admin notification email for quote conversion (non-blocking)
+  const user = await UserModel.findById(existingQuote.user_id);
+  if (user) {
+    sendAdminOrderNotification(
+      order,
+      {
+        name: user.name,
+        email: user.email,
+        company: user.company,
+      },
+      existingQuote.quote_no
+    ).catch((error) => {
+      console.error('Failed to send admin order notification:', error.message);
+    });
   }
 
   return {
