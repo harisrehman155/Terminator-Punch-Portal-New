@@ -12,6 +12,11 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  Paper,
+  Stack,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +40,8 @@ const QuotesList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     let isMounted = true;
@@ -195,6 +202,20 @@ const QuotesList = () => {
     return `${text.slice(0, limit)}...`;
   };
 
+  const formatDate = (value) => {
+    if (!value) {
+      return '-';
+    }
+    return new Date(value).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
   const columns = [
     {
       field: 'quote_no',
@@ -279,17 +300,7 @@ const QuotesList = () => {
           params?.row?.updated_date ||
           params?.row?.updatedDate ||
           null;
-        if (!value) {
-          return '-';
-        }
-        return new Date(value).toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
+        return formatDate(value);
       },
     },
     {
@@ -362,13 +373,21 @@ const QuotesList = () => {
         actionLabel="New Quote"
       />
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: { xs: 'grid', sm: 'flex' },
+          gap: 2,
+          flexWrap: 'wrap',
+          gridTemplateColumns: { xs: '1fr', sm: 'none' },
+        }}
+      >
         <TextField
           select
           label="Status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
@@ -384,7 +403,7 @@ const QuotesList = () => {
           label="Type"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
@@ -399,26 +418,163 @@ const QuotesList = () => {
           label="Search"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          sx={{ flexGrow: 1, maxWidth: 300 }}
+          sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}
           size="small"
         />
       </Box>
 
-      <Box sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={filteredQuotes}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          loading={isLoading}
-          onRowClick={(params) => navigate(`/quotes/${params.row.id}`)}
-          sx={{
-            '& .MuiDataGrid-row:hover': {
-              cursor: 'pointer',
-            },
-          }}
-        />
-      </Box>
+      {isMobile ? (
+        <Stack spacing={2}>
+          {filteredQuotes.length === 0 && !isLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              No quotes found.
+            </Typography>
+          ) : (
+            filteredQuotes.map((quote) => (
+              <Paper
+                key={quote.id}
+                elevation={0}
+                onClick={() => navigate(`/quotes/${quote.id}`)}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box display="flex" justifyContent="space-between" gap={1} flexWrap="wrap">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {quote.quote_no || `Quote ${quote.id}`}
+                    </Typography>
+                    <StatusChip status={quote.status} type="quote" />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Type
+                    </Typography>
+                    <TypeChip type={quote.quote_type || quote.service_type} />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Design
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {quote.design_name || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Price
+                    </Typography>
+                    {quote.price !== null && quote.price !== undefined ? (
+                      <Chip
+                        label={`${quote.currency || 'USD'} ${Number(quote.price).toFixed(2)}`}
+                        size="small"
+                        color="success"
+                      />
+                    ) : (
+                      <Chip label="Pending" size="small" />
+                    )}
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Created
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatDate(
+                        quote.created_at ||
+                          quote.createdAt ||
+                          quote.created ||
+                          quote.created_date ||
+                          quote.createdDate ||
+                          quote.updated_at ||
+                          quote.updatedAt ||
+                          quote.updated ||
+                          quote.updated_date ||
+                          quote.updatedDate ||
+                          null
+                      )}
+                    </Typography>
+                  </Box>
+                  {quote.remarks && (
+                    <Typography variant="body2" color="text.secondary">
+                      {truncateText(quote.remarks, 80)}
+                    </Typography>
+                  )}
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <Tooltip title="View">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/quotes/${quote.id}`);
+                        }}
+                      >
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {quote.status === 'PRICED' && (
+                      <Tooltip title="Priced - convert to order available">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/quotes/${quote.id}`);
+                          }}
+                        >
+                          <ShoppingCart fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Edit">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/quotes/${quote.id}/edit`);
+                        }}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(quote);
+                        }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Stack>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      ) : (
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={filteredQuotes}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            loading={isLoading}
+            onRowClick={(params) => navigate(`/quotes/${params.row.id}`)}
+            sx={{
+              '& .MuiDataGrid-row:hover': {
+                cursor: 'pointer',
+              },
+            }}
+          />
+        </Box>
+      )}
 
       <Dialog
         open={deleteDialogOpen}

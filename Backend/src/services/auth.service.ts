@@ -3,6 +3,7 @@ import { UserCreateInput } from '../types/user.types';
 import { comparePassword } from '../utils/password';
 import { generateToken } from '../config/jwt';
 import { generateOTP, getOTPExpiry } from '../utils/helpers';
+import { sendRegistrationOTP, sendPasswordResetOTP } from './email.service';
 import {
   BadRequestError,
   UnauthorizedError,

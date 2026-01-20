@@ -1,11 +1,22 @@
-import { AppBar, Toolbar, Box, IconButton, InputBase, Badge, Menu, MenuItem, Avatar, Typography } from '@mui/material';
-import { Search, Notifications, AccountCircle } from '@mui/icons-material';
+import {
+  AppBar,
+  Toolbar,
+  Box,
+  IconButton,
+  InputBase,
+  Badge,
+  Menu,
+  MenuItem,
+  Avatar,
+  Typography,
+} from '@mui/material';
+import { Search, Notifications, Menu as MenuIcon } from '@mui/icons-material';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../../redux/actions/AuthAction';
 
-const Topbar = () => {
+const Topbar = ({ isMobile, onMenuClick }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -37,25 +48,29 @@ const Topbar = () => {
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
-        <Box sx={{ flexGrow: 1, maxWidth: 400 }}>
-          <Box
-            sx={{
-              position: 'relative',
-              backgroundColor: 'grey.100',
-              borderRadius: 2,
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              px: 2,
-              py: 0.5,
-            }}
-          >
-            <Search sx={{ color: 'text.secondary', mr: 1 }} />
-            <InputBase
-              placeholder="Search..."
-              sx={{ flex: 1 }}
-            />
+      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
+          {isMobile && (
+            <IconButton color="inherit" onClick={onMenuClick}>
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Box sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 400 }, display: { xs: 'none', sm: 'block' } }}>
+            <Box
+              sx={{
+                position: 'relative',
+                backgroundColor: 'grey.100',
+                borderRadius: 2,
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                py: 0.5,
+              }}
+            >
+              <Search sx={{ color: 'text.secondary', mr: 1 }} />
+              <InputBase placeholder="Search..." sx={{ flex: 1 }} />
+            </Box>
           </Box>
         </Box>
 
@@ -122,4 +137,3 @@ const Topbar = () => {
 };
 
 export default Topbar;
-

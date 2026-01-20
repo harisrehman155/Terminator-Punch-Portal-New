@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Box, Grid, Typography, alpha, CircularProgress } from '@mui/material';
+import { Box, Typography, alpha, CircularProgress } from '@mui/material';
 import {
   ShoppingCart,
   Description,
@@ -139,54 +139,52 @@ const AdminDashboard = () => {
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="Total Orders"
-            value={normalizedStats.totalOrders}
-            icon={ShoppingCart}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="Pending Orders"
-            value={normalizedStats.pendingOrders}
-            icon={HourglassEmpty}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="In Progress"
-            value={normalizedStats.inProgressOrders}
-            icon={HourglassEmpty}
-            color="#3b82f6"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="Completed Orders"
-            value={normalizedStats.completedOrders}
-            icon={CheckCircle}
-            color="#36e27b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="Pending Quotes"
-            value={normalizedStats.pendingQuotes}
-            icon={Description}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <StatCard
-            title="Total Users"
-            value={normalizedStats.totalUsers}
-            icon={People}
-          />
-        </Grid>
-      </Grid>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(3, minmax(0, 1fr))',
+          },
+        }}
+      >
+        <StatCard
+          title="Total Orders"
+          value={normalizedStats.totalOrders}
+          icon={ShoppingCart}
+        />
+        <StatCard
+          title="Pending Orders"
+          value={normalizedStats.pendingOrders}
+          icon={HourglassEmpty}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="In Progress"
+          value={normalizedStats.inProgressOrders}
+          icon={HourglassEmpty}
+          color="#3b82f6"
+        />
+        <StatCard
+          title="Completed Orders"
+          value={normalizedStats.completedOrders}
+          icon={CheckCircle}
+          color="#36e27b"
+        />
+        <StatCard
+          title="Pending Quotes"
+          value={normalizedStats.pendingQuotes}
+          icon={Description}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="Total Users"
+          value={normalizedStats.totalUsers}
+          icon={People}
+        />
+      </Box>
     </Box>
   );
 };

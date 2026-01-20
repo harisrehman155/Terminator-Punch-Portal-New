@@ -26,6 +26,8 @@ import {
   alpha,
   Stack,
   Tooltip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Download, Edit, Delete, Cancel } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
@@ -49,6 +51,8 @@ const OrderDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     let isMounted = true;
@@ -326,6 +330,46 @@ const OrderDetails = () => {
         </Typography>
       );
     }
+    if (isMobile) {
+      return (
+        <Stack spacing={1.5}>
+          {list.map((file) => (
+            <Paper
+              key={file.id}
+              elevation={0}
+              sx={{
+                p: 1.5,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+              }}
+            >
+              <Stack spacing={1}>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    {file.original_name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {file.mime_type || '-'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Tooltip title="Download">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDownload(file)}
+                      color="primary"
+                    >
+                      <Download fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+      );
+    }
     return (
       <TableContainer>
         <Table>
@@ -398,11 +442,16 @@ const OrderDetails = () => {
               {order.is_urgent ? <Chip label="Urgent" size="small" color="warning" /> : null}
             </Box>
             </Box>
-            <Box display="flex" gap={1} flexWrap="wrap">
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
               <Button
                 variant="outlined"
                 startIcon={<Edit />}
                 onClick={() => navigate(`/orders/${id}/edit`)}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Edit
               </Button>
@@ -412,6 +461,7 @@ const OrderDetails = () => {
                   color="warning"
                   startIcon={<Cancel />}
                   onClick={() => setCancelDialogOpen(true)}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Cancel
                 </Button>
@@ -421,18 +471,24 @@ const OrderDetails = () => {
                 color="error"
                 startIcon={<Delete />}
                 onClick={() => setDeleteDialogOpen(true)}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 Delete
               </Button>
-            </Box>
+            </Stack>
           </Box>
 
           {/* Tabs */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={tabValue} onChange={handleTabChange}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              variant={isMobile ? 'scrollable' : 'standard'}
+              scrollButtons={isMobile ? 'auto' : false}
+              allowScrollButtonsMobile
+            >
               <Tab label="Overview" />
               <Tab label={`Files (${files.length})`} />
-              <Tab label={`History (${history.length})`} />
             </Tabs>
           </Box>
 
@@ -519,8 +575,10 @@ const OrderDetails = () => {
                 <Box
                   sx={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
                     justifyContent: 'space-between',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 1,
                     mb: 1,
                   }}
                 >
@@ -533,6 +591,7 @@ const OrderDetails = () => {
                       variant="outlined"
                       startIcon={<Download />}
                       onClick={handleDownloadAllAdmin}
+                      sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                       Download All
                     </Button>
@@ -543,43 +602,6 @@ const OrderDetails = () => {
             </DetailSection>
           )}
 
-          {/* History Tab */}
-          {tabValue === 2 && (
-            <DetailSection title="Order History">
-              {history.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No history available.
-                </Typography>
-              ) : (
-                <Stack spacing={2}>
-                  {history.map((item) => (
-                    <Paper
-                      key={item.id}
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        borderLeft: '4px solid',
-                        borderColor: 'primary.main',
-                        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary" mb={0.5}>
-                        {new Date(item.created_at).toLocaleString()}
-                      </Typography>
-                      <Typography variant="body1" fontWeight={600} mb={0.5}>
-                        {item.from_status} → {item.to_status}
-                      </Typography>
-                      {item.note && (
-                        <Typography variant="body2" color="text.secondary">
-                          {item.note}
-                        </Typography>
-                      )}
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </DetailSection>
-          )}
         </CardContent>
       </Card>
 

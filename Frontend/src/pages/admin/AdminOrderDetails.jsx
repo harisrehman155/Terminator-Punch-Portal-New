@@ -26,6 +26,8 @@ import {
   CircularProgress,
   IconButton,
   Tooltip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Download, Upload, Delete } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
@@ -48,6 +50,8 @@ const AdminOrderDetails = () => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const orderStatusOptions = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
@@ -345,6 +349,55 @@ const AdminOrderDetails = () => {
         </Typography>
       );
     }
+    if (isMobile) {
+      return (
+        <Stack spacing={1.5}>
+          {list.map((file) => (
+            <Paper
+              key={file.id}
+              elevation={0}
+              sx={{
+                p: 1.5,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+              }}
+            >
+              <Stack spacing={1}>
+                <Box>
+                  <Typography variant="body2" fontWeight={600} sx={{ wordBreak: 'break-word' }}>
+                    {file.original_name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                    {file.mime_type || '-'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Tooltip title="Download">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDownload(file)}
+                      color="primary"
+                    >
+                      <Download fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteFile(file.id)}
+                      color="error"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Stack>
+            </Paper>
+          ))}
+        </Stack>
+      );
+    }
     return (
       <TableContainer>
         <Table>
@@ -478,7 +531,7 @@ const AdminOrderDetails = () => {
                 {order.is_urgent && <Chip label="Urgent" size="small" color="warning" />}
               </Box>
             </Box>
-            <FormControl sx={{ minWidth: 220 }}>
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 220 } }}>
               <InputLabel>Change Status</InputLabel>
               <Select
                 value={status}
@@ -496,10 +549,15 @@ const AdminOrderDetails = () => {
           </Box>
 
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={tabValue} onChange={handleTabChange}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              variant={isMobile ? 'scrollable' : 'standard'}
+              scrollButtons={isMobile ? 'auto' : false}
+              allowScrollButtonsMobile
+            >
               <Tab label="Overview" />
               <Tab label={`Files (${customerFiles.length} customer, ${adminFiles.length} admin)`} />
-              <Tab label={`History (${history.length})`} />
             </Tabs>
           </Box>
 
@@ -581,7 +639,16 @@ const AdminOrderDetails = () => {
                 {renderFilesTable(customerFiles)}
               </Box>
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 1,
+                    mb: 2,
+                  }}
+                >
                   <Typography variant="subtitle2" fontWeight={600}>
                     Admin Response Files
                   </Typography>
@@ -591,6 +658,7 @@ const AdminOrderDetails = () => {
                     startIcon={<Upload />}
                     component="label"
                     disabled={isUploading}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     {isUploading ? 'Uploading...' : 'Upload Response File'}
                     <input type="file" hidden multiple onChange={handleFileUpload} />
@@ -601,42 +669,6 @@ const AdminOrderDetails = () => {
             </DetailSection>
           )}
 
-          {tabValue === 2 && (
-            <DetailSection title="Order History">
-              {history.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No history available.
-                </Typography>
-              ) : (
-                <Stack spacing={2}>
-                  {history.map((item) => (
-                    <Paper
-                      key={item.id}
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        borderLeft: '4px solid',
-                        borderColor: 'primary.main',
-                        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.05),
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary" mb={0.5}>
-                        {new Date(item.created_at).toLocaleString()}
-                      </Typography>
-                      <Typography variant="body1" fontWeight={600} mb={0.5}>
-                        {item.from_status} → {item.to_status}
-                      </Typography>
-                      {item.note && (
-                        <Typography variant="body2" color="text.secondary">
-                          {item.note}
-                        </Typography>
-                      )}
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </DetailSection>
-          )}
         </CardContent>
       </Card>
     </Box>

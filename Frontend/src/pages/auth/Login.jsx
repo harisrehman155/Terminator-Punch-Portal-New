@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, TextField, Button, Typography, Link } from '@mui/material';
+import { Box, Card, CardContent, TextField, Button, Typography, Link, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -69,21 +69,30 @@ const Login = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', sm: 'center' },
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%)',
-        p: 3,
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        px: { xs: 2, sm: 3 },
+        py: { xs: 3, sm: 6 },
       }}
     >
-      <Card sx={{ maxWidth: 450, width: '100%' }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom fontWeight={700} textAlign="center" mb={3}>
+      <Card sx={{ maxWidth: 480, width: '100%', borderRadius: 2, boxShadow: { xs: 2, sm: 4 } }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            fontWeight={700}
+            textAlign="center"
+            mb={{ xs: 2.5, sm: 3 }}
+            sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}
+          >
             Login
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <Stack component="form" onSubmit={handleSubmit} spacing={{ xs: 1.5, sm: 2 }}>
             <TextField
               fullWidth
               label="Email"
@@ -91,7 +100,6 @@ const Login = () => {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              margin="normal"
               required
               error={!!formErrors.email}
               helperText={formErrors.email}
@@ -104,7 +112,6 @@ const Login = () => {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              margin="normal"
               required
               error={!!formErrors.password}
               helperText={formErrors.password}
@@ -115,12 +122,12 @@ const Login = () => {
               fullWidth
               variant="contained"
               disabled={loading}
-              sx={{ mt: 2, mb: 2, py: 1.5 }}
+              sx={{ py: { xs: 1.2, sm: 1.5 } }}
             >
               {loading ? 'Logging in...' : 'Login'}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Box sx={{ textAlign: 'center' }}>
               <Link
                 component="button"
                 type="button"
@@ -132,7 +139,7 @@ const Login = () => {
               </Link>
             </Box>
 
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{' '}
                 <Link
@@ -146,7 +153,7 @@ const Login = () => {
                 </Link>
               </Typography>
             </Box>
-          </Box>
+          </Stack>
         </CardContent>
       </Card>
     </Box>
@@ -154,4 +161,3 @@ const Login = () => {
 };
 
 export default Login;
-

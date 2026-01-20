@@ -709,7 +709,8 @@ const AdminQuoteEdit = () => {
               sx={{
                 display: 'flex',
                 gap: 2,
-                justifyContent: 'flex-end',
+                justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                flexDirection: { xs: 'column', sm: 'row' },
                 pt: 2,
                 borderTop: '1px solid',
                 borderColor: 'divider',
@@ -718,11 +719,16 @@ const AdminQuoteEdit = () => {
               <Button
                 variant="outlined"
                 onClick={() => navigate(`/admin/quotes/${id}`)}
-                sx={{ minWidth: 120 }}
+                sx={{ minWidth: { xs: '100%', sm: 120 } }}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="contained" sx={{ minWidth: 140 }} disabled={isSubmitting}>
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ minWidth: { xs: '100%', sm: 140 } }}
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? 'Updating...' : 'Update Quote'}
               </Button>
             </Box>

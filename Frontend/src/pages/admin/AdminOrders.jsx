@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, CircularProgress, Typography } from '@mui/material';
+import {
+  Box,
+  TextField,
+  MenuItem,
+  Chip,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  Typography,
+  Paper,
+  Stack,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Download } from '@mui/icons-material';
@@ -15,6 +28,8 @@ const AdminOrders = () => {
   const dispatch = useDispatch();
   const { adminOrders, dashboardLoading, dashboardError } = useSelector((state) => state.home);
   const token = useSelector((state) => state.auth.token);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -26,7 +41,13 @@ const AdminOrders = () => {
   }, [dispatch]);
 
   // Apply client-side filtering
-  let filteredOrders = adminOrders || [];
+  const normalizeUrgent = (value) =>
+    value === true || value === 'true' || value === 1 || value === '1';
+  const normalizedOrders = (adminOrders || []).map((order) => ({
+    ...order,
+    is_urgent: normalizeUrgent(order.is_urgent),
+  }));
+  let filteredOrders = normalizedOrders;
 
   if (statusFilter !== 'all') {
     filteredOrders = filteredOrders.filter(o => o.status === statusFilter);
@@ -111,6 +132,20 @@ const AdminOrders = () => {
     }
   };
 
+  const formatDate = (value) => {
+    if (!value) {
+      return '-';
+    }
+    return new Date(value).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
   const columns = [
     {
       field: 'order_no',
@@ -182,17 +217,7 @@ const AdminOrders = () => {
           params?.row?.updated_date ||
           params?.row?.updatedDate ||
           null;
-        if (!value) {
-          return '-';
-        }
-        return new Date(value).toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
+        return formatDate(value);
       },
     },
     {
@@ -241,13 +266,21 @@ const AdminOrders = () => {
         ]}
       />
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: { xs: 'grid', sm: 'flex' },
+          gap: 2,
+          flexWrap: 'wrap',
+          gridTemplateColumns: { xs: '1fr', sm: 'none' },
+        }}
+      >
         <TextField
           select
           label="Status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
@@ -262,7 +295,7 @@ const AdminOrders = () => {
           label="Type"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
@@ -275,25 +308,129 @@ const AdminOrders = () => {
           label="Search"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          sx={{ flexGrow: 1, maxWidth: 300 }}
+          sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}
           size="small"
         />
       </Box>
 
-      <Box sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={filteredOrders}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          onRowClick={(params) => navigate(`/admin/orders/${params.row.id}`)}
-          sx={{
-            '& .MuiDataGrid-row:hover': {
-              cursor: 'pointer',
-            },
-          }}
-        />
-      </Box>
+      {isMobile ? (
+        <Stack spacing={2}>
+          {filteredOrders.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No orders found.
+            </Typography>
+          ) : (
+            filteredOrders.map((order) => (
+              <Paper
+                key={order.id}
+                elevation={0}
+                onClick={() => navigate(`/admin/orders/${order.id}`)}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box display="flex" justifyContent="space-between" gap={1} flexWrap="wrap">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {order.order_no || `Order ${order.id}`}
+                    </Typography>
+                    <StatusChip status={order.status} />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Type
+                    </Typography>
+                    <TypeChip type={order.order_type} />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Customer
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {order.user?.name || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Design
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {order.design_name || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Created
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatDate(
+                        order.created_at ||
+                          order.createdAt ||
+                          order.created ||
+                          order.created_date ||
+                          order.createdDate ||
+                          order.updated_at ||
+                          order.updatedAt ||
+                          order.updated ||
+                          order.updated_date ||
+                          order.updatedDate ||
+                          null
+                      )}
+                    </Typography>
+                  </Box>
+                  {order.is_urgent && (
+                    <Chip label="Urgent" size="small" color="warning" sx={{ width: 'fit-content' }} />
+                  )}
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <Tooltip title="View">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/admin/orders/${order.id}`);
+                        }}
+                      >
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download all files">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadAll(order);
+                        }}
+                      >
+                        <Download fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Stack>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      ) : (
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={filteredOrders}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            onRowClick={(params) => navigate(`/admin/orders/${params.row.id}`)}
+            sx={{
+              '& .MuiDataGrid-row:hover': {
+                cursor: 'pointer',
+              },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

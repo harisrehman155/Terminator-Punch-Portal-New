@@ -7,7 +7,7 @@ const PageHeader = ({ title, breadcrumbs, action, actionLabel }) => {
       {breadcrumbs && breadcrumbs.length > 0 && (
         <Breadcrumbs
           separator={<NavigateNext fontSize="small" />}
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, flexWrap: 'wrap' }}
         >
           {breadcrumbs.map((crumb, index) => {
             if (index === breadcrumbs.length - 1) {
@@ -30,12 +30,27 @@ const PageHeader = ({ title, breadcrumbs, action, actionLabel }) => {
           })}
         </Breadcrumbs>
       )}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" component="h1" fontWeight={700}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={{ xs: 1.5, sm: 2 }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          fontWeight={700}
+          sx={{ fontSize: { xs: '1.6rem', sm: '2.125rem' } }}
+        >
           {title}
         </Typography>
         {action && actionLabel && (
-          <Button variant="contained" onClick={action}>
+          <Button
+            variant="contained"
+            onClick={action}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
             {actionLabel}
           </Button>
         )}
@@ -45,4 +60,3 @@ const PageHeader = ({ title, breadcrumbs, action, actionLabel }) => {
 };
 
 export default PageHeader;
-

@@ -1,4 +1,13 @@
-import { Box, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider } from '@mui/material';
+import {
+  Box,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Drawer,
+  Toolbar,
+} from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
@@ -10,7 +19,7 @@ import {
   People as UsersIcon,
 } from '@mui/icons-material';
 
-const Sidebar = () => {
+const Sidebar = ({ isMobile, mobileOpen, onMobileClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state) => state.auth);
@@ -32,28 +41,31 @@ const Sidebar = () => {
 
   const menuItems = role === 'ADMIN' ? adminMenuItems : userMenuItems;
 
-  return (
+  const menuContent = (
     <Box
       sx={{
         width: 260,
-        height: '100vh',
+        height: '100%',
         backgroundColor: '#ffffff',
         borderRight: '1px solid #e5e7eb',
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        pt: 8,
       }}
     >
+      <Toolbar />
       <List>
         {menuItems.map((item) => {
-          const isActive = location.pathname === item.path || 
+          const isActive =
+            location.pathname === item.path ||
             (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-          
+
           return (
             <ListItem key={item.path} disablePadding>
               <ListItemButton
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  navigate(item.path);
+                  if (isMobile && onMobileClose) {
+                    onMobileClose();
+                  }
+                }}
                 sx={{
                   backgroundColor: isActive ? '#36e27b15' : 'transparent',
                   color: isActive ? '#36e27b' : 'text.primary',
@@ -80,7 +92,40 @@ const Sidebar = () => {
       </List>
     </Box>
   );
+
+  if (isMobile) {
+    return (
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={onMobileClose}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 260,
+          },
+        }}
+      >
+        {menuContent}
+      </Drawer>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        width: 260,
+        height: '100vh',
+        backgroundColor: '#ffffff',
+        borderRight: '1px solid #e5e7eb',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+      }}
+    >
+      {menuContent}
+    </Box>
+  );
 };
 
 export default Sidebar;
-
