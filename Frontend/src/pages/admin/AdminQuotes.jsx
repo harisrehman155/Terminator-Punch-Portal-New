@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, TextField, MenuItem, Chip, IconButton, Tooltip, Badge, CircularProgress, Typography } from '@mui/material';
+import {
+  Box,
+  TextField,
+  MenuItem,
+  Chip,
+  IconButton,
+  Tooltip,
+  Badge,
+  CircularProgress,
+  Typography,
+  Paper,
+  Stack,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Warning } from '@mui/icons-material';
@@ -13,6 +27,8 @@ const AdminQuotes = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { adminQuotes, dashboardLoading, dashboardError } = useSelector((state) => state.home);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [statusFilter, setStatusFilter] = useState('needs_action');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -79,6 +95,20 @@ const AdminQuotes = () => {
       </>
     );
   }
+
+  const formatDate = (value) => {
+    if (!value) {
+      return '-';
+    }
+    return new Date(value).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
 
   const columns = [
     {
@@ -165,17 +195,7 @@ const AdminQuotes = () => {
           params?.row?.updated_date ||
           params?.row?.updatedDate ||
           null;
-        if (!value) {
-          return '-';
-        }
-        return new Date(value).toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
+        return formatDate(value);
       },
     },
     {
@@ -227,13 +247,21 @@ const AdminQuotes = () => {
         ]}
       />
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: { xs: 'grid', sm: 'flex' },
+          gap: 2,
+          flexWrap: 'wrap',
+          gridTemplateColumns: { xs: '1fr', sm: 'none' },
+        }}
+      >
         <TextField
           select
           label="Status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="needs_action">
@@ -250,7 +278,7 @@ const AdminQuotes = () => {
           label="Type"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          sx={{ minWidth: 150 }}
+          sx={{ minWidth: { xs: '100%', sm: 150 } }}
           size="small"
         >
           <MenuItem value="all">All</MenuItem>
@@ -263,25 +291,133 @@ const AdminQuotes = () => {
           label="Search"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          sx={{ flexGrow: 1, maxWidth: 300 }}
+          sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}
           size="small"
         />
       </Box>
 
-      <Box sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={filteredQuotes}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-          onRowClick={(params) => navigate(`/admin/quotes/${params.row.id}`)}
-          sx={{
-            '& .MuiDataGrid-row:hover': {
-              cursor: 'pointer',
-            },
-          }}
-        />
-      </Box>
+      {isMobile ? (
+        <Stack spacing={2}>
+          {filteredQuotes.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No quotes found.
+            </Typography>
+          ) : (
+            filteredQuotes.map((quote) => (
+              <Paper
+                key={quote.id}
+                elevation={0}
+                onClick={() => navigate(`/admin/quotes/${quote.id}`)}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box display="flex" justifyContent="space-between" gap={1} flexWrap="wrap">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {quote.quote_no || `Quote ${quote.id}`}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <StatusChip status={quote.status} type="quote" />
+                      {(quote.status === 'PENDING' || quote.status === 'REVISION_REQUESTED') && (
+                        <Warning fontSize="small" color="warning" />
+                      )}
+                    </Box>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Type
+                    </Typography>
+                    <TypeChip type={quote.service_type} />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Customer
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {quote.user?.name || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Design
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {quote.design_name || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Price
+                    </Typography>
+                    {quote.price ? (
+                      <Chip
+                        label={`${quote.currency || 'USD'} ${quote.price}`}
+                        size="small"
+                        color="success"
+                      />
+                    ) : (
+                      <Chip label="Not Set" size="small" variant="outlined" />
+                    )}
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Created
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatDate(
+                        quote.created_at ||
+                          quote.createdAt ||
+                          quote.created ||
+                          quote.created_date ||
+                          quote.createdDate ||
+                          quote.updated_at ||
+                          quote.updatedAt ||
+                          quote.updated ||
+                          quote.updated_date ||
+                          quote.updatedDate ||
+                          null
+                      )}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" gap={1}>
+                    <Tooltip title="View">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/admin/quotes/${quote.id}`);
+                        }}
+                      >
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Stack>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      ) : (
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={filteredQuotes}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            onRowClick={(params) => navigate(`/admin/quotes/${params.row.id}`)}
+            sx={{
+              '& .MuiDataGrid-row:hover': {
+                cursor: 'pointer',
+              },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

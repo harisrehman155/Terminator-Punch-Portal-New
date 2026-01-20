@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box,
-  Grid,
   Card,
   CardContent,
   Typography,
@@ -100,43 +99,46 @@ const Dashboard = () => {
       </Box>
 
       {/* Stats row */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Total Orders"
-            value={stats.totalOrders}
-            icon={ShoppingCart}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Pending"
-            value={stats.pending}
-            icon={HourglassEmpty}
-            color="#f59e0b"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="In Progress"
-            value={stats.inProgress}
-            icon={HourglassEmpty}
-            color="#3b82f6"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Completed"
-            value={stats.completed}
-            icon={CheckCircle}
-            color="#36e27b"
-          />
-        </Grid>
-      </Grid>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          mb: 4,
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(4, minmax(0, 1fr))',
+          },
+        }}
+      >
+        <StatCard
+          title="Total Orders"
+          value={stats.totalOrders}
+          icon={ShoppingCart}
+        />
+        <StatCard
+          title="Pending"
+          value={stats.pending}
+          icon={HourglassEmpty}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="In Progress"
+          value={stats.inProgress}
+          icon={HourglassEmpty}
+          color="#3b82f6"
+        />
+        <StatCard
+          title="Completed"
+          value={stats.completed}
+          icon={CheckCircle}
+          color="#36e27b"
+        />
+      </Box>
 
       {/* Recent activity */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+        <Box>
           <Paper
             elevation={0}
             sx={(theme) => ({
@@ -173,9 +175,9 @@ const Dashboard = () => {
               </Table>
             </TableContainer>
           </Paper>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={6}>
+        <Box>
           <Paper
             elevation={0}
             sx={(theme) => ({
@@ -212,11 +214,10 @@ const Dashboard = () => {
               </Table>
             </TableContainer>
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 };
 
 export default Dashboard;
-

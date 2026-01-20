@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Card, CardContent, TextField, Button, Typography } from '@mui/material';
+import { Box, Card, CardContent, TextField, Button, Typography, Stack } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -61,21 +61,30 @@ const ResetPassword = () => {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', sm: 'center' },
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%)',
-        p: 3,
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        px: { xs: 2, sm: 3 },
+        py: { xs: 3, sm: 6 },
       }}
     >
-      <Card sx={{ maxWidth: 450, width: '100%' }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom fontWeight={700} textAlign="center" mb={3}>
+      <Card sx={{ maxWidth: 480, width: '100%', borderRadius: 2, boxShadow: { xs: 2, sm: 4 } }}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            fontWeight={700}
+            textAlign="center"
+            mb={{ xs: 2.5, sm: 3 }}
+            sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}
+          >
             Reset Password
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <Stack component="form" onSubmit={handleSubmit} spacing={{ xs: 1.5, sm: 2 }}>
             <TextField
               fullWidth
               label="New Password"
@@ -83,7 +92,6 @@ const ResetPassword = () => {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              margin="normal"
               required
             />
 
@@ -94,7 +102,6 @@ const ResetPassword = () => {
               type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              margin="normal"
               required
             />
 
@@ -103,11 +110,11 @@ const ResetPassword = () => {
               fullWidth
               variant="contained"
               disabled={loading}
-              sx={{ mt: 2, mb: 2, py: 1.5 }}
+              sx={{ py: { xs: 1.2, sm: 1.5 } }}
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
-          </Box>
+          </Stack>
         </CardContent>
       </Card>
     </Box>
@@ -115,4 +122,3 @@ const ResetPassword = () => {
 };
 
 export default ResetPassword;
-

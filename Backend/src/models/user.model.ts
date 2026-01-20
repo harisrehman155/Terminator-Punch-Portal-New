@@ -51,7 +51,7 @@ export const findById = async (id: number): Promise<User | null> => {
 /**
  * Create new user
  */
-export const create = async (userData: UserCreateInput): Promise<User> => {
+export const create = async (userData: UserCreateInput, isActive: boolean = false): Promise<User> => {
   try {
     const hashedPassword = await hashPassword(userData.password);
 
@@ -63,7 +63,7 @@ export const create = async (userData: UserCreateInput): Promise<User> => {
 
     const result: any = await query(
       `INSERT INTO users (name, email, password_hash, company, phone, address, city, country, role_id, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userData.name,
         userData.email,
@@ -74,6 +74,7 @@ export const create = async (userData: UserCreateInput): Promise<User> => {
         userData.city || null,
         userData.country || null,
         roleId,
+        isActive ? 1 : 0,
       ]
     );
 
@@ -216,6 +217,20 @@ export const clearOTP = async (userId: number): Promise<void> => {
     );
   } catch (error) {
     throw new DatabaseError('Failed to clear OTP');
+  }
+};
+
+/**
+ * Verify OTP and activate user (for registration)
+ */
+export const verifyAndActivateUser = async (userId: number): Promise<void> => {
+  try {
+    await query(
+      'UPDATE users SET otp_code = NULL, otp_expires = NULL, email_verified_at = NOW(), is_active = 1, updated_at = NOW() WHERE id = ?',
+      [userId]
+    );
+  } catch (error) {
+    throw new DatabaseError('Failed to verify and activate user');
   }
 };
 

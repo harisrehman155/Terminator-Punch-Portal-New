@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Box, Switch, CircularProgress, Typography } from '@mui/material';
+import {
+  Box,
+  Switch,
+  CircularProgress,
+  Typography,
+  Paper,
+  Stack,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import PageHeader from '../../components/common/PageHeader';
 import { toast } from 'react-toastify';
@@ -12,6 +21,8 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     let isMounted = true;
@@ -174,6 +185,20 @@ const AdminUsers = () => {
     },
   ];
 
+  const formatDate = (value) => {
+    if (!value) {
+      return '-';
+    }
+    return new Date(value).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -214,14 +239,92 @@ const AdminUsers = () => {
         ]}
       />
 
-      <Box sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={users}
-          columns={columns}
-          pageSize={10}
-          rowsPerPageOptions={[10, 25, 50]}
-        />
-      </Box>
+      {isMobile ? (
+        <Stack spacing={2}>
+          {users.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No users found.
+            </Typography>
+          ) : (
+            users.map((user) => (
+              <Paper
+                key={user.id}
+                elevation={0}
+                sx={{
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2,
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box display="flex" justifyContent="space-between" gap={1} flexWrap="wrap">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {user.name || 'N/A'}
+                    </Typography>
+                    <Switch
+                      checked={Boolean(user.is_active)}
+                      onChange={() => handleToggleActive(user.id)}
+                      color="primary"
+                      disabled={updatingId === user.id}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {user.email || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Role
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {user.role || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Company
+                    </Typography>
+                    <Typography variant="body2" fontWeight={500}>
+                      {user.company || '-'}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      Created
+                    </Typography>
+                    <Typography variant="body2">
+                      {formatDate(
+                        user.created_at ||
+                          user.createdAt ||
+                          user.created ||
+                          user.created_date ||
+                          user.createdDate ||
+                          user.updated_at ||
+                          user.updatedAt ||
+                          user.updated ||
+                          user.updated_date ||
+                          user.updatedDate ||
+                          null
+                      )}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            ))
+          )}
+        </Stack>
+      ) : (
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={users}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

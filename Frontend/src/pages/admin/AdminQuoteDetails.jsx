@@ -28,6 +28,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Edit, Delete, Download, AttachMoney, ShoppingCart } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
@@ -74,6 +76,8 @@ const AdminQuoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [quote, setQuote] = useState(null);
@@ -379,13 +383,18 @@ const AdminQuoteDetails = () => {
                   {quote.is_urgent ? <Chip label="Urgent" size="small" color="warning" /> : null}
                 </Box>
               </Box>
-              <Box display="flex" gap={1} flexWrap="wrap">
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
                 <Button
                   variant="outlined"
                   size="small"
                   startIcon={<Edit />}
                   onClick={() => navigate(`/admin/quotes/${id}/edit`)}
                   disabled={!isPending}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Edit
                 </Button>
@@ -395,10 +404,11 @@ const AdminQuoteDetails = () => {
                   size="small"
                   startIcon={<Delete />}
                   onClick={() => setDeleteDialogOpen(true)}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
                   Delete
                 </Button>
-              </Box>
+              </Stack>
             </Box>
 
             <DetailSection title="Quote Details">
@@ -462,6 +472,41 @@ const AdminQuoteDetails = () => {
                 <Typography variant="body2" color="text.secondary">
                   No files uploaded yet.
                 </Typography>
+              ) : isMobile ? (
+                <Stack spacing={1.5}>
+                  {files.map((file) => (
+                    <Paper
+                      key={file.id}
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>
+                            {file.original_name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {file.mime_type || '-'}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          startIcon={<Download />}
+                          variant="outlined"
+                          onClick={() => handleDownload(file)}
+                          sx={{ width: { xs: '100%', sm: 'auto' } }}
+                        >
+                          Download
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
               ) : (
                 <TableContainer>
                   <Table>

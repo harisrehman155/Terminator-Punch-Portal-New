@@ -15,6 +15,8 @@ import {
   TableHead,
   TableRow,
   Tooltip,
+  useMediaQuery,
+  useTheme,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -47,6 +49,8 @@ const QuoteDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [quote, setQuote] = useState(null);
@@ -331,13 +335,18 @@ const QuoteDetails = () => {
                 </Box>
               </Box>
               {!isConverted && !isRejected && (
-                <Box display="flex" gap={1} flexWrap="wrap">
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
                   <Button
                     variant="outlined"
                     size="small"
                     startIcon={<Edit />}
                     onClick={() => navigate(`/quotes/${id}/edit`)}
                     disabled={!isPending}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Edit
                   </Button>
@@ -347,10 +356,11 @@ const QuoteDetails = () => {
                     size="small"
                     startIcon={<Delete />}
                     onClick={() => setDeleteDialogOpen(true)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Delete
                   </Button>
-                </Box>
+                </Stack>
               )}
             </Box>
 
@@ -416,6 +426,43 @@ const QuoteDetails = () => {
               <Typography variant="body2" color="text.secondary">
                 No files uploaded yet.
               </Typography>
+            ) : isMobile ? (
+              <Stack spacing={1.5}>
+                {files.map((file) => (
+                  <Paper
+                    key={file.id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Stack spacing={1}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {file.original_name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {file.mime_type || '-'}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Download">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDownload(file)}
+                            color="primary"
+                          >
+                            <Download fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
             ) : (
               <TableContainer>
                 <Table>
