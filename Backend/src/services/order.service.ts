@@ -1,4 +1,9 @@
 import * as OrderModel from '../models/order.model';
+import * as UserModel from '../models/user.model';
+import {
+  sendAdminOrderNotification,
+  sendOrderCompletedNotification,
+} from './email.service';
 import {
   Order,
   OrderCreateInput,
@@ -21,12 +26,27 @@ import {
  */
 export const createOrder = async (
   userId: number,
-  orderData: OrderCreateInput
+  orderData: OrderCreateInput,
+  skipEmail: boolean = false
 ): Promise<OrderResponse> => {
   // Validate order type specific fields
   validateOrderTypeFields(orderData);
 
   const order = await OrderModel.create(userId, orderData);
+
+  // Send admin notification email (non-blocking) - skip if called from quote conversion
+  if (!skipEmail) {
+    const user = await UserModel.findById(userId);
+    if (user) {
+      sendAdminOrderNotification(order, {
+        name: user.name,
+        email: user.email,
+        company: user.company,
+      }).catch((error) => {
+        console.error('Failed to send admin order notification:', error.message);
+      });
+    }
+  }
 
   return OrderModel.toOrderResponse(order);
 };
@@ -214,6 +234,19 @@ export const updateOrderStatus = async (
   validateStatusTransition(existingOrder.status, status);
 
   const updatedOrder = await OrderModel.updateStatus(orderId, status);
+
+  // Send customer notification if order completed (non-blocking)
+  if (status === 'COMPLETED') {
+    const user = await UserModel.findById(existingOrder.user_id);
+    if (user) {
+      sendOrderCompletedNotification(updatedOrder, {
+        name: user.name,
+        email: user.email,
+      }).catch((error) => {
+        console.error('Failed to send order completed notification:', error.message);
+      });
+    }
+  }
 
   return OrderModel.toOrderResponse(updatedOrder);
 };
