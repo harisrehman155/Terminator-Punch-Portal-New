@@ -111,7 +111,37 @@ export const forgotPassword = asyncHandler(
 );
 
 /**
- * Verify OTP
+ * Verify registration OTP
+ * POST /api/auth/verify-registration
+ */
+export const verifyRegistrationOTP = asyncHandler(async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+
+  // Validation
+  const errors: any = {};
+
+  if (!email || !isValidEmail(email)) {
+    errors.email = 'Valid email is required';
+  }
+
+  if (!otp || otp.length !== 6) {
+    errors.otp = 'Valid 6-digit OTP is required';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw new ValidationError('Validation failed', errors);
+  }
+
+  const result = await AuthService.verifyRegistrationOTP(
+    email.toLowerCase().trim(),
+    otp.trim()
+  );
+
+  return successResponse(res, result.message, result);
+});
+
+/**
+ * Verify OTP (for password reset)
  * POST /api/auth/verify-otp
  */
 export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
