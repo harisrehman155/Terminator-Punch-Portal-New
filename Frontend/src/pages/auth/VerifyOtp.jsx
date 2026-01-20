@@ -3,7 +3,7 @@ import { Box, Card, CardContent, TextField, Button, Typography, Link, Stack } fr
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { verifyOtpUser, forgotPasswordUser } from '../../redux/actions/AuthAction';
+import { verifyOtpUser, verifyRegistrationOtpUser, forgotPasswordUser, signupUser } from '../../redux/actions/AuthAction';
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
@@ -11,14 +11,18 @@ const VerifyOtp = () => {
   const dispatch = useDispatch();
   const { loading } = useSelector(state => state.auth);
   const email = location.state?.email;
+  const isRegistration = location.state?.isRegistration || false;
   const [otp, setOtp] = useState('');
 
   useEffect(() => {
     if (!email) {
-      toast.error('No email provided. Please restart password reset.');
-      navigate('/forgot-password');
+      const errorMessage = isRegistration
+        ? 'No email provided. Please restart registration.'
+        : 'No email provided. Please restart password reset.';
+      toast.error(errorMessage);
+      navigate(isRegistration ? '/register' : '/forgot-password');
     }
-  }, [email, navigate]);
+  }, [email, isRegistration, navigate]);
 
   const handleChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -33,21 +37,41 @@ const VerifyOtp = () => {
       return;
     }
 
-    const result = await dispatch(verifyOtpUser(email, otp));
+    if (isRegistration) {
+      // Registration flow
+      const result = await dispatch(verifyRegistrationOtpUser(email, otp));
 
-    if (result.success) {
-      toast.success('OTP verified successfully');
-      navigate('/reset-password', { state: { resetToken: result.data.resetToken } });
+      if (result.success) {
+        toast.success('Email verified successfully! Please login to continue.');
+        navigate('/login');
+      } else {
+        toast.error(result.message || 'Invalid OTP');
+      }
     } else {
-      toast.error(result.message || 'Invalid OTP');
+      // Password reset flow
+      const result = await dispatch(verifyOtpUser(email, otp));
+
+      if (result.success) {
+        toast.success('OTP verified successfully');
+        navigate('/reset-password', { state: { resetToken: result.data.resetToken } });
+      } else {
+        toast.error(result.message || 'Invalid OTP');
+      }
     }
   };
 
   const handleResendOTP = async () => {
-    const result = await dispatch(forgotPasswordUser(email));
-    if (result.success) {
-      toast.success('New OTP sent to your email');
-      setOtp('');
+    if (isRegistration) {
+      // Resend registration OTP - not implemented yet
+      toast.info('Resend OTP for registration is not available. Please register again.');
+      navigate('/register');
+    } else {
+      // Resend password reset OTP
+      const result = await dispatch(forgotPasswordUser(email));
+      if (result.success) {
+        toast.success('New OTP sent to your email');
+        setOtp('');
+      }
     }
   };
 
@@ -74,7 +98,7 @@ const VerifyOtp = () => {
             mb={{ xs: 2, sm: 2.5 }}
             sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}
           >
-            Verify OTP
+            {isRegistration ? 'Verify Email' : 'Verify OTP'}
           </Typography>
           <Typography
             variant="body2"
@@ -82,7 +106,9 @@ const VerifyOtp = () => {
             textAlign="center"
             mb={{ xs: 2, sm: 3 }}
           >
-            Enter the 6-digit OTP sent to your email.
+            {isRegistration
+              ? `We've sent a verification code to ${email}. Please enter it below to activate your account.`
+              : 'Enter the 6-digit OTP sent to your email.'}
           </Typography>
 
           <Stack component="form" onSubmit={handleSubmit} spacing={{ xs: 1.5, sm: 2 }}>

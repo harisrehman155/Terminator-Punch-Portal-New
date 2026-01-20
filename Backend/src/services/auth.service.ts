@@ -152,23 +152,8 @@ export const verifyRegistrationOTP = async (email: string, otpCode: string) => {
   // Activate user and clear OTP
   await UserModel.verifyAndActivateUser(user.id);
 
-  // Fetch updated user
-  const updatedUser = await UserModel.findById(user.id);
-  if (!updatedUser) {
-    throw new NotFoundError('User not found');
-  }
-
-  // Generate JWT token
-  const token = generateToken({
-    userId: updatedUser.id,
-    email: updatedUser.email,
-    role: updatedUser.role,
-  });
-
   return {
-    message: 'Email verified successfully',
-    user: UserModel.toUserResponse(updatedUser),
-    token,
+    message: 'Email verified successfully. Please login to continue.',
   };
 };
 

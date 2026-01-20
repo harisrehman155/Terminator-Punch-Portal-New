@@ -210,7 +210,47 @@ export const forgotPasswordUser = (email) => {
     };
 };
 
-// Verify OTP action
+// Verify Registration OTP action
+export const verifyRegistrationOtpUser = (email, otp) => {
+    return async (dispatch) => {
+        try {
+            dispatch(setAuthLoading(true));
+            dispatch(setAuthError(null));
+
+            const response = await apiService({
+                method: HttpMethod.POST,
+                endPoint: "/auth/verify-registration",
+                data: { email, otp }
+            });
+
+            if (response.success) {
+                return {
+                    success: true,
+                    message: response.message
+                };
+            } else {
+                dispatch(setAuthError(response.message));
+                return { success: false, message: response.message };
+            }
+        } catch (error) {
+            console.error('Verify registration OTP error:', error);
+
+            if (error.response && error.response.data) {
+                const responseData = error.response.data;
+                dispatch(setAuthError(responseData.message || "OTP verification failed"));
+                return { success: false, message: responseData.message || "OTP verification failed" };
+            } else {
+                const errorMessage = "OTP verification failed. Please try again.";
+                dispatch(setAuthError(errorMessage));
+                return { success: false, message: errorMessage };
+            }
+        } finally {
+            dispatch(setAuthLoading(false));
+        }
+    };
+};
+
+// Verify OTP action (for password reset)
 export const verifyOtpUser = (email, otp) => {
     return async (dispatch) => {
         try {

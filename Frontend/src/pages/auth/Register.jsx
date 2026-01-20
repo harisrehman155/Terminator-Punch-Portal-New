@@ -63,8 +63,8 @@ const Register = () => {
     ));
 
     if (result.success) {
-      toast.success('Registration successful! Please login to continue.');
-      navigate('/login');
+      toast.success('Registration successful! Please verify your email.');
+      navigate('/verify-otp', { state: { email: formData.email, isRegistration: true } });
     } else {
       if (result.errors) {
         setFormErrors(result.errors);
