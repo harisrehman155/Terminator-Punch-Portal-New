@@ -267,7 +267,7 @@ const AdminInvoiceDetails = () => {
                 Name
               </Typography>
               <Typography variant="body1" fontWeight={500}>
-                {invoice.user?.name || 'N/A'}
+                {invoice.user_name || 'N/A'}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -275,16 +275,16 @@ const AdminInvoiceDetails = () => {
                 Email
               </Typography>
               <Typography variant="body1">
-                {invoice.user?.email || 'N/A'}
+                {invoice.user_email || 'N/A'}
               </Typography>
             </Grid>
-            {invoice.user?.company && (
+            {invoice.user_company && (
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">
                   Company
                 </Typography>
                 <Typography variant="body1">
-                  {invoice.user.company}
+                  {invoice.user_company}
                 </Typography>
               </Grid>
             )}

@@ -199,7 +199,13 @@ export const downloadInvoicePDF = asyncHandler(async (req: Request, res: Respons
   }
 
   if (!invoice.pdf_file_path) {
-    throw new NotFoundError('PDF not found for this invoice');
+    try {
+      const pdfPath = await PDFService.generateInvoicePDF(invoice.id);
+      await InvoiceModel.updatePDFPath(invoice.id, pdfPath);
+      invoice.pdf_file_path = pdfPath;
+    } catch (error) {
+      throw new NotFoundError('PDF not found for this invoice');
+    }
   }
 
   // Send file

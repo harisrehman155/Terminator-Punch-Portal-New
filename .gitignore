@@ -36,6 +36,7 @@ coverage/
 # Uploads and temporary files
 uploads/*
 !uploads/.gitkeep
+Backend/invoices/
 temp/
 tmp/
 
