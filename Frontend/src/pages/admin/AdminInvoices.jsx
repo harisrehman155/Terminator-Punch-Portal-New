@@ -50,7 +50,8 @@ const AdminInvoices = () => {
     filteredInvoices = filteredInvoices.filter(
       inv =>
         inv.invoice_no?.toLowerCase().includes(searchText.toLowerCase()) ||
-        inv.user?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        inv.user_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        inv.user_email?.toLowerCase().includes(searchText.toLowerCase()) ||
         inv.billing_period?.toLowerCase().includes(searchText.toLowerCase())
     );
   }
@@ -144,14 +145,19 @@ const AdminInvoices = () => {
       ),
     },
     {
-      field: 'user',
+      field: 'user_name',
       headerName: 'Customer',
       width: 200,
       renderCell: (params) => (
         <Box>
           <Typography variant="body2" fontWeight={500}>
-            {params.value?.name || 'N/A'}
+            {params.value || 'N/A'}
           </Typography>
+          {params.row.user_email && (
+            <Typography variant="caption" color="text.secondary">
+              {params.row.user_email}
+            </Typography>
+          )}
         </Box>
       ),
     },
@@ -226,15 +232,8 @@ const AdminInvoices = () => {
           { label: 'Admin Dashboard', path: '/admin/dashboard' },
           { label: 'Invoices' },
         ]}
-        action={
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => navigate('/admin/invoices/create')}
-          >
-            Create Invoice
-          </Button>
-        }
+        action={() => navigate('/admin/invoices/create')}
+        actionLabel="Create Invoice"
       />
 
       <Box
@@ -302,7 +301,7 @@ const AdminInvoices = () => {
                       Customer
                     </Typography>
                     <Typography variant="body2" fontWeight={500}>
-                      {invoice.user?.name || 'N/A'}
+                      {invoice.user_name || 'N/A'}
                     </Typography>
                   </Box>
                   <Box display="flex" justifyContent="space-between" alignItems="center">

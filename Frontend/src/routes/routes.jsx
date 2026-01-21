@@ -34,6 +34,7 @@ import AdminQuoteEdit from '../pages/admin/AdminQuoteEdit';
 import AdminInvoices from '../pages/admin/AdminInvoices';
 import AdminInvoiceCreate from '../pages/admin/AdminInvoiceCreate';
 import AdminInvoiceDetails from '../pages/admin/AdminInvoiceDetails';
+import AdminInvoiceEdit from '../pages/admin/AdminInvoiceEdit';
 import AdminUsers from '../pages/admin/AdminUsers';
 
 // Protected Route Component
@@ -348,6 +349,18 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/admin/invoices/:id/edit"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['ADMIN']}>
+              <AppLayout>
+                <AdminInvoiceEdit />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/admin/users"
         element={
           <RequireAuth>
@@ -368,4 +381,3 @@ const AppRoutes = () => {
 };
 
 export default AppRoutes;
-

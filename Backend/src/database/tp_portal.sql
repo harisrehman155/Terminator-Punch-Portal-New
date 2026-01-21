@@ -95,8 +95,72 @@ CREATE TABLE `orders` (
   `required_format` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`required_format`)),
   `instruction` text DEFAULT NULL,
   `is_urgent` tinyint(1) NOT NULL DEFAULT 0,
+  `price` decimal(10,2) DEFAULT NULL,
+  `currency` varchar(3) DEFAULT 'USD',
+  `pricing_notes` text DEFAULT NULL,
+  `is_invoiced` tinyint(1) NOT NULL DEFAULT 0,
+  `invoiced_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoices`
+--
+
+CREATE TABLE `invoices` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `invoice_no` varchar(50) NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `billing_period` varchar(100) NOT NULL,
+  `billing_month` int(10) UNSIGNED NOT NULL,
+  `billing_year` int(10) UNSIGNED NOT NULL,
+  `status_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to lookups (invoice_status)',
+  `subtotal` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `tax_rate` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `tax_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `currency` varchar(3) NOT NULL DEFAULT 'USD',
+  `notes` text DEFAULT NULL,
+  `pdf_file_path` varchar(500) DEFAULT NULL,
+  `is_locked` tinyint(1) NOT NULL DEFAULT 0,
+  `created_by` int(10) UNSIGNED NOT NULL,
+  `paid_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoice_items`
+--
+
+CREATE TABLE `invoice_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `invoice_id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(10) UNSIGNED NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `service_type_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to lookups (service_type)',
+  `quantity` int(10) UNSIGNED NOT NULL DEFAULT 1,
+  `unit_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `line_total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `invoice_orders`
+--
+
+CREATE TABLE `invoice_orders` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `invoice_id` int(10) UNSIGNED NOT NULL,
+  `order_id` int(10) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -201,7 +265,36 @@ ALTER TABLE `orders`
   ADD KEY `idx_status_id` (`status_id`),
   ADD KEY `idx_unit_id` (`unit_id`),
   ADD KEY `idx_is_urgent` (`is_urgent`),
+  ADD KEY `idx_is_invoiced` (`is_invoiced`),
   ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `invoice_no` (`invoice_no`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_status_id` (`status_id`),
+  ADD KEY `idx_created_by` (`created_by`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `invoice_items`
+--
+ALTER TABLE `invoice_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_invoice_id` (`invoice_id`),
+  ADD KEY `idx_order_id` (`order_id`),
+  ADD KEY `idx_service_type_id` (`service_type_id`);
+
+--
+-- Indexes for table `invoice_orders`
+--
+ALTER TABLE `invoice_orders`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_invoice_id` (`invoice_id`),
+  ADD KEY `idx_order_id` (`order_id`);
 
 --
 -- Indexes for table `quotes`
@@ -257,6 +350,24 @@ ALTER TABLE `orders`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `invoices`
+--
+ALTER TABLE `invoices`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `invoice_items`
+--
+ALTER TABLE `invoice_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `invoice_orders`
+--
+ALTER TABLE `invoice_orders`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `quotes`
 --
 ALTER TABLE `quotes`
@@ -294,6 +405,29 @@ ALTER TABLE `orders`
   ADD CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`service_type_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `orders_ibfk_3` FOREIGN KEY (`status_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `orders_ibfk_4` FOREIGN KEY (`unit_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `invoices`
+--
+ALTER TABLE `invoices`
+  ADD CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`status_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `invoices_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `invoice_items`
+--
+ALTER TABLE `invoice_items`
+  ADD CONSTRAINT `invoice_items_ibfk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `invoice_items_ibfk_2` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `invoice_items_ibfk_3` FOREIGN KEY (`service_type_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `invoice_orders`
+--
+ALTER TABLE `invoice_orders`
+  ADD CONSTRAINT `invoice_orders_ibfk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `invoice_orders_ibfk_2` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `quotes`

@@ -36,6 +36,7 @@ coverage/
 # Uploads (local development)
 uploads/*
 !uploads/.gitkeep
+invoices/
 
 # Temporary files
 tmp/
