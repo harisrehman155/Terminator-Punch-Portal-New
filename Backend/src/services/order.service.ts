@@ -23,16 +23,18 @@ import {
 
 /**
  * Create a new order
+ * @param pricingData - Optional pricing data (from quote conversion)
  */
 export const createOrder = async (
   userId: number,
   orderData: OrderCreateInput,
-  skipEmail: boolean = false
+  skipEmail: boolean = false,
+  pricingData?: { price: number; currency: string; pricing_notes?: string }
 ): Promise<OrderResponse> => {
   // Validate order type specific fields
   validateOrderTypeFields(orderData);
 
-  const order = await OrderModel.create(userId, orderData);
+  const order = await OrderModel.create(userId, orderData, pricingData);
 
   // Send admin notification email (non-blocking) - skip if called from quote conversion
   if (!skipEmail) {

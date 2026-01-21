@@ -1,4 +1,4 @@
-import { FETCH_LOOKUP_VALUES, CATEGORIES, FETCH_PRODUCTS, SET_PRODUCTS_LOADING, SET_PRODUCTS_ERROR, FETCH_TRENDING_PRODUCTS, FETCH_LATEST_PRODUCTS, FETCH_RECOMMENDED_PRODUCTS, FETCH_PRODUCT_DETAIL, SET_PRODUCT_DETAIL_LOADING, FETCH_USER_ORDERS, FETCH_USER_QUOTES, SET_DASHBOARD_LOADING, SET_DASHBOARD_ERROR } from "../ActionTypes";
+import { FETCH_LOOKUP_VALUES, CATEGORIES, FETCH_PRODUCTS, SET_PRODUCTS_LOADING, SET_PRODUCTS_ERROR, FETCH_TRENDING_PRODUCTS, FETCH_LATEST_PRODUCTS, FETCH_RECOMMENDED_PRODUCTS, FETCH_PRODUCT_DETAIL, SET_PRODUCT_DETAIL_LOADING, FETCH_USER_ORDERS, FETCH_USER_QUOTES, FETCH_USER_INVOICES, FETCH_ADMIN_INVOICES, SET_DASHBOARD_LOADING, SET_DASHBOARD_ERROR } from "../ActionTypes";
 
 // Custom action types for admin data
 const FETCH_ADMIN_ORDERS = 'FETCH_ADMIN_ORDERS';
@@ -20,8 +20,10 @@ const initialState = {
     productDetailLoading: false,
     userOrders: [],
     userQuotes: [],
+    userInvoices: [],
     adminOrders: [],
     adminQuotes: [],
+    adminInvoices: [],
     dashboardLoading: false,
     dashboardError: null
 };
@@ -118,6 +120,18 @@ const HomeReducer = (state = initialState, action) => {
             return {
                 ...state,
                 adminQuotes: action.payload,
+                dashboardError: null
+            };
+        case FETCH_USER_INVOICES:
+            return {
+                ...state,
+                userInvoices: action.payload,
+                dashboardError: null
+            };
+        case FETCH_ADMIN_INVOICES:
+            return {
+                ...state,
+                adminInvoices: action.payload,
                 dashboardError: null
             };
         default:

@@ -2,6 +2,14 @@ import { Chip } from '@mui/material';
 
 const StatusChip = ({ status, type = 'order' }) => {
   const getStatusColor = () => {
+    // Invoice statuses
+    if (status === 'UNPAID') {
+      return { color: '#f59e0b', bg: '#fef3c7', icon: '●' };
+    }
+    if (status === 'PAID') {
+      return { color: '#10b981', bg: '#d1fae5', icon: '🔒' };
+    }
+
     if (type === 'order') {
       switch (status) {
         case 'PENDING':

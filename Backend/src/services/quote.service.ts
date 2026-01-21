@@ -296,7 +296,21 @@ export const convertQuoteToOrder = async (
     is_urgent: existingQuote.is_urgent,
   };
 
-  const order = await OrderService.createOrder(existingQuote.user_id, orderData, true); // skipEmail=true, we send email with quote reference below
+  // Extract pricing data from quote to auto-populate order pricing
+  const pricingData = existingQuote.price
+    ? {
+        price: existingQuote.price,
+        currency: existingQuote.currency || 'USD',
+        pricing_notes: existingQuote.remarks,
+      }
+    : undefined;
+
+  const order = await OrderService.createOrder(
+    existingQuote.user_id,
+    orderData,
+    true, // skipEmail=true, we send email with quote reference below
+    pricingData
+  );
 
   // Update quote status to CONVERTED
   await QuoteModel.convertToOrder(quoteId, order.id);
