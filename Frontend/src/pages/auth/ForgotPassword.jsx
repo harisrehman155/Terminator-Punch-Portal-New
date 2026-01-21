@@ -34,7 +34,7 @@ const ForgotPassword = () => {
       sx={{
         minHeight: '100dvh',
         display: 'flex',
-        alignItems: { xs: 'flex-start', sm: 'center' },
+        alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
         px: { xs: 2, sm: 3 },

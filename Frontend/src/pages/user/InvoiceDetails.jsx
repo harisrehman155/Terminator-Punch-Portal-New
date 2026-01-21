@@ -16,6 +16,8 @@ import {
   TableHead,
   TableRow,
   Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Download } from '@mui/icons-material';
 import PageHeader from '../../components/common/PageHeader';
@@ -27,6 +29,8 @@ const InvoiceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +142,12 @@ const InvoiceDetails = () => {
       <Stack spacing={3}>
         {/* Header Card */}
         <Paper sx={{ p: 3 }}>
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+            spacing={2}
+          >
             <Box>
               <Typography variant="h5" gutterBottom>
                 {invoice.invoice_no}
@@ -149,10 +158,12 @@ const InvoiceDetails = () => {
               variant="contained"
               startIcon={<Download />}
               onClick={handleDownloadPDF}
+              fullWidth
+              sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
             >
               Download PDF
             </Button>
-          </Box>
+          </Stack>
         </Paper>
 
         {/* Invoice Info */}
@@ -205,44 +216,79 @@ const InvoiceDetails = () => {
             Invoice Items
           </Typography>
           <Divider sx={{ mb: 2 }} />
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Order #</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Service Type</TableCell>
-                  <TableCell align="right">Qty</TableCell>
-                  <TableCell align="right">Unit Price</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {invoice.items && invoice.items.length > 0 ? (
-                  invoice.items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.order_no || item.order_id}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell>{item.service_type}</TableCell>
-                      <TableCell align="right">{item.quantity || 1}</TableCell>
-                      <TableCell align="right">
-                        {formatCurrency(item.unit_price, invoice.currency)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatCurrency(item.line_total, invoice.currency)}
+          {isMobile ? (
+            <Stack spacing={2}>
+              {invoice.items && invoice.items.length > 0 ? (
+                invoice.items.map((item, index) => (
+                  <Paper key={index} variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={0.5}>
+                      <Typography variant="subtitle2">
+                        {item.order_no || item.order_id}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {item.description}
+                      </Typography>
+                      <Typography variant="body2">
+                        Service: {item.service_type || 'N/A'}
+                      </Typography>
+                      <Typography variant="body2">
+                        Qty: {item.quantity || 1}
+                      </Typography>
+                      <Typography variant="body2">
+                        Unit: {formatCurrency(item.unit_price, invoice.currency)}
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        Total: {formatCurrency(item.line_total, invoice.currency)}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" align="center">
+                  No items found
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Order #</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Service Type</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell align="right">Unit Price</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {invoice.items && invoice.items.length > 0 ? (
+                    invoice.items.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.order_no || item.order_id}</TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell>{item.service_type}</TableCell>
+                        <TableCell align="right">{item.quantity || 1}</TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(item.unit_price, invoice.currency)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(item.line_total, invoice.currency)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        No items found
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      No items found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </Paper>
 
         {/* Totals */}
