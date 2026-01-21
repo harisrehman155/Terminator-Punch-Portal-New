@@ -119,7 +119,8 @@ export const signupUser = (name, email, password, confirmPassword) => {
                 data: { name, email, password }
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 return { success: true, data: response.data };
             } else {
                 dispatch(setAuthError(response.message));
@@ -186,7 +187,8 @@ export const forgotPasswordUser = (email) => {
                 data: { email }
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 return { success: true, message: response.message };
             } else {
                 dispatch(setAuthError(response.message));
@@ -223,7 +225,8 @@ export const verifyRegistrationOtpUser = (email, otp) => {
                 data: { email, otp }
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 return {
                     success: true,
                     message: response.message
@@ -263,7 +266,8 @@ export const verifyOtpUser = (email, otp) => {
                 data: { email, otp }
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 return {
                     success: true,
                     data: { resetToken: response.data.resetToken },
@@ -304,7 +308,8 @@ export const resetPasswordUser = (resetToken, newPassword) => {
                 data: { resetToken, newPassword }
             });
 
-            if (response.success) {
+            const isSuccess = response?.success === true || response?.status === 'success';
+            if (isSuccess) {
                 return { success: true, message: response.message };
             } else {
                 dispatch(setAuthError(response.message));

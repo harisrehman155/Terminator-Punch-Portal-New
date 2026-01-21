@@ -228,7 +228,13 @@ const InvoicesList = () => {
                 </Box>
 
                 {/* Actions */}
-                <Box display="flex" gap={1} onClick={(e) => e.stopPropagation()}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  gap={1}
+                  flexWrap="wrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Tooltip title="View Details">
                     <IconButton
                       size="small"

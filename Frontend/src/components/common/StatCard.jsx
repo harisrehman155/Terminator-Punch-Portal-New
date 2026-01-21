@@ -17,8 +17,8 @@ const StatCard = ({ title, value, icon: Icon, color = '#36e27b' }) => {
         },
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Box display="flex" alignItems="flex-start" justifyContent="space-between">
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={2}>
           <Box sx={{ flex: 1 }}>
             <Typography
               variant="body2"
@@ -34,6 +34,7 @@ const StatCard = ({ title, value, icon: Icon, color = '#36e27b' }) => {
               sx={{
                 color: color,
                 lineHeight: 1.2,
+                fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.75rem' },
               }}
             >
               {value}
@@ -44,16 +45,15 @@ const StatCard = ({ title, value, icon: Icon, color = '#36e27b' }) => {
               sx={{
                 backgroundColor: alpha(color, 0.1),
                 borderRadius: 2,
-                p: 2,
+                p: { xs: 1.25, sm: 2 },
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                ml: 2,
                 border: '1px solid',
                 borderColor: alpha(color, 0.2),
               }}
             >
-              <Icon sx={{ fontSize: 36, color: color }} />
+              <Icon sx={{ fontSize: { xs: 24, sm: 32, md: 36 }, color: color }} />
             </Box>
           )}
         </Box>
@@ -63,4 +63,3 @@ const StatCard = ({ title, value, icon: Icon, color = '#36e27b' }) => {
 };
 
 export default StatCard;
-

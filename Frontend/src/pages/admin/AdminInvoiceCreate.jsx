@@ -387,8 +387,8 @@ const AdminInvoiceCreate = () => {
                   Line Items
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <TableContainer>
-                  <Table>
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 560 }}>
                     <TableHead>
                       <TableRow>
                         <TableCell>Order #</TableCell>
@@ -468,11 +468,16 @@ const AdminInvoiceCreate = () => {
               </Paper>
 
               {/* Actions */}
-              <Box display="flex" justifyContent="flex-end" gap={2}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                justifyContent="flex-end"
+                spacing={2}
+              >
                 <Button
                   variant="outlined"
                   onClick={() => navigate('/admin/invoices')}
                   disabled={loading}
+                  fullWidth
                 >
                   Cancel
                 </Button>
@@ -480,10 +485,11 @@ const AdminInvoiceCreate = () => {
                   type="submit"
                   variant="contained"
                   disabled={loading}
+                  fullWidth
                 >
                   {loading ? 'Creating...' : 'Create Invoice'}
                 </Button>
-              </Box>
+              </Stack>
             </>
           )}
         </Stack>

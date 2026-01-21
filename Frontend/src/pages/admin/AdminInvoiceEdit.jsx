@@ -19,6 +19,8 @@ import {
   Stack,
   CircularProgress,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import PageHeader from '../../components/common/PageHeader';
 import apiService, { HttpMethod } from '../../api/ApiService';
@@ -42,6 +44,8 @@ const AdminInvoiceEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [invoice, setInvoice] = useState(null);
   const [items, setItems] = useState([]);
@@ -304,60 +308,101 @@ const AdminInvoiceEdit = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Orders cannot be added or removed in edit mode. Update descriptions and pricing only.
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Order #</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Qty</TableCell>
-                    <TableCell>Unit Price</TableCell>
-                    <TableCell>Total</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {items.map((item, index) => (
-                    <TableRow key={item.order_id}>
-                      <TableCell>{item.order_no}</TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                          disabled={isLocked}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                          inputProps={{ min: 1 }}
-                          sx={{ width: 80 }}
-                          disabled={isLocked}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={item.unit_price}
-                          onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                          inputProps={{ step: 0.01, min: 0 }}
-                          sx={{ width: 120 }}
-                          disabled={isLocked}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        ${parseFloat(item.line_total || 0).toFixed(2)}
-                      </TableCell>
+            {isMobile ? (
+              <Stack spacing={2}>
+                {items.map((item, index) => (
+                  <Paper key={item.order_id} variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={2}>
+                      <Typography variant="subtitle2">{item.order_no}</Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Description"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        disabled={isLocked}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Qty"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                        inputProps={{ min: 1 }}
+                        disabled={isLocked}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Unit Price"
+                        value={item.unit_price}
+                        onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                        inputProps={{ step: 0.01, min: 0 }}
+                        disabled={isLocked}
+                      />
+                      <Typography variant="body2" fontWeight={600}>
+                        Total: ${parseFloat(item.line_total || 0).toFixed(2)}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Order #</TableCell>
+                      <TableCell>Description</TableCell>
+                      <TableCell>Qty</TableCell>
+                      <TableCell>Unit Price</TableCell>
+                      <TableCell>Total</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {items.map((item, index) => (
+                      <TableRow key={item.order_id}>
+                        <TableCell>{item.order_no}</TableCell>
+                        <TableCell>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                            disabled={isLocked}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                            inputProps={{ min: 1 }}
+                            sx={{ width: 80 }}
+                            disabled={isLocked}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={item.unit_price}
+                            onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
+                            inputProps={{ step: 0.01, min: 0 }}
+                            sx={{ width: 120 }}
+                            disabled={isLocked}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          ${parseFloat(item.line_total || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
 
             <Box sx={{ mt: 3, maxWidth: 400, ml: 'auto' }}>
               <Stack spacing={1}>
@@ -386,18 +431,28 @@ const AdminInvoiceEdit = () => {
             </Box>
           </Paper>
 
-          <Box display="flex" justifyContent="flex-end" gap={2}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            justifyContent="flex-end"
+            spacing={2}
+          >
             <Button
               variant="outlined"
               onClick={() => navigate(`/admin/invoices/${id}`)}
               disabled={saving}
+              fullWidth
             >
               Cancel
             </Button>
-            <Button type="submit" variant="contained" disabled={saving || isLocked}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={saving || isLocked}
+              fullWidth
+            >
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
-          </Box>
+          </Stack>
         </Stack>
       </form>
     </Box>
