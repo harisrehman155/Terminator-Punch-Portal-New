@@ -32,10 +32,12 @@ const resolveLookupId = async (
 
 /**
  * Create a new order
+ * @param pricingData - Optional pricing data (auto-populated from quote conversion)
  */
 export const create = async (
   userId: number,
-  orderData: OrderCreateInput
+  orderData: OrderCreateInput,
+  pricingData?: { price: number; currency: string; pricing_notes?: string }
 ): Promise<Order> => {
   try {
     // Generate unique order number
@@ -73,13 +75,19 @@ export const create = async (
       ? JSON.stringify(orderData.required_format)
       : null;
 
-    const result: any = await query(
-      `INSERT INTO orders (
+    // Build query dynamically based on whether pricing data is provided
+    let sql: string;
+    let params: any[];
+
+    if (pricingData) {
+      sql = `INSERT INTO orders (
         user_id, order_no, service_type_id, status_id, design_name,
         height, width, unit_id, number_of_colors, fabric, color_type,
-        placement, required_format, instruction, is_urgent
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
+        placement, required_format, instruction, is_urgent,
+        price, currency, pricing_notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      params = [
         userId,
         orderNo,
         serviceTypeId,
@@ -95,8 +103,37 @@ export const create = async (
         requiredFormat,
         orderData.instruction || null,
         orderData.is_urgent || 0,
-      ]
-    );
+        pricingData.price,
+        pricingData.currency,
+        pricingData.pricing_notes || null,
+      ];
+    } else {
+      sql = `INSERT INTO orders (
+        user_id, order_no, service_type_id, status_id, design_name,
+        height, width, unit_id, number_of_colors, fabric, color_type,
+        placement, required_format, instruction, is_urgent
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      params = [
+        userId,
+        orderNo,
+        serviceTypeId,
+        statusId,
+        orderData.design_name,
+        orderData.height || null,
+        orderData.width || null,
+        unitId,
+        orderData.number_of_colors || null,
+        orderData.fabric || null,
+        orderData.color_type || null,
+        placement,
+        requiredFormat,
+        orderData.instruction || null,
+        orderData.is_urgent || 0,
+      ];
+    }
+
+    const result: any = await query(sql, params);
 
     const orderId = result.insertId;
     const order = await findById(orderId);

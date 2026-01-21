@@ -14,6 +14,7 @@ import {
   Dashboard as DashboardIcon,
   ShoppingCart as OrdersIcon,
   Description as QuotesIcon,
+  Receipt as InvoicesIcon,
   Person as ProfileIcon,
   AdminPanelSettings as AdminIcon,
   People as UsersIcon,
@@ -29,6 +30,7 @@ const Sidebar = ({ isMobile, mobileOpen, onMobileClose }) => {
     { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
     { label: 'Orders', path: '/orders', icon: <OrdersIcon /> },
     { label: 'Quotes', path: '/quotes', icon: <QuotesIcon /> },
+    { label: 'Invoices', path: '/invoices', icon: <InvoicesIcon /> },
     { label: 'Profile', path: '/profile', icon: <ProfileIcon /> },
   ];
 
@@ -36,6 +38,7 @@ const Sidebar = ({ isMobile, mobileOpen, onMobileClose }) => {
     { label: 'Admin Dashboard', path: '/admin/dashboard', icon: <DashboardIcon /> },
     { label: 'Orders', path: '/admin/orders', icon: <OrdersIcon /> },
     { label: 'Quotes', path: '/admin/quotes', icon: <QuotesIcon /> },
+    { label: 'Invoices', path: '/admin/invoices', icon: <InvoicesIcon /> },
     { label: 'Users', path: '/admin/users', icon: <UsersIcon /> },
   ];
 

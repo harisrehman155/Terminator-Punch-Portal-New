@@ -11,6 +11,11 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content?: Buffer;
+    path?: string;
+  }>;
 }
 
 /**
@@ -27,6 +32,7 @@ const sendEmail = async (options: EmailOptions): Promise<void> => {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      attachments: options.attachments,
     });
 
     console.log(`✓ Email sent successfully to ${options.to}`);
@@ -1115,6 +1121,403 @@ TP Portal Team
     console.log(`✓ Order completed notification sent to ${user.email}`);
   } catch (error: any) {
     console.error('✗ Failed to send order completed notification:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Invoice Created Email Template
+ */
+const getInvoiceCreatedTemplate = (): HandlebarsTemplateDelegate => {
+  const template = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Invoice - TP Portal</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
+        .email-container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .email-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; }
+        .email-header h1 { color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .email-header p { color: #e0e7ff; font-size: 16px; }
+        .email-body { padding: 40px 30px; }
+        .greeting { font-size: 18px; color: #333333; margin-bottom: 20px; }
+        .message { font-size: 15px; color: #666666; margin-bottom: 30px; line-height: 1.8; }
+        .invoice-container { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0; }
+        .invoice-label { font-size: 14px; color: #666666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .invoice-number { font-size: 36px; font-weight: 700; color: #667eea; margin: 10px 0; font-family: 'Courier New', monospace; }
+        .amount-box { background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%); border-left: 4px solid #ffa000; border-radius: 6px; padding: 25px; margin: 25px 0; text-align: center; }
+        .amount-label { font-size: 14px; color: #666666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .amount-value { font-size: 36px; font-weight: 700; color: #f57c00; margin: 5px 0; }
+        .detail-section { background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-weight: 600; color: #333333; flex: 0 0 50%; }
+        .detail-value { color: #666666; flex: 1; text-align: right; }
+        .status-badge { display: inline-block; background-color: #ff9800; color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; margin: 10px 0; }
+        .info-box { background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px 20px; margin: 25px 0; border-radius: 4px; }
+        .info-box p { font-size: 14px; color: #0d47a1; margin: 5px 0; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 20px 0; }
+        .footer { background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .footer p { font-size: 13px; color: #6c757d; margin: 5px 0; }
+        @media only screen and (max-width: 600px) {
+          .email-container { margin: 20px; }
+          .email-header { padding: 30px 20px; }
+          .email-body { padding: 30px 20px; }
+          .invoice-number { font-size: 28px; }
+          .amount-value { font-size: 28px; }
+          .detail-row { flex-direction: column; }
+          .detail-value { text-align: left; margin-top: 5px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>TP Portal</h1>
+          <p>New Invoice</p>
+        </div>
+
+        <div class="email-body">
+          <div class="greeting">Hello {{name}},</div>
+
+          <div class="message">
+            Your invoice for <strong>{{billingPeriod}}</strong> has been generated and is ready for your review. Please find the invoice attached to this email as a PDF.
+          </div>
+
+          <div class="invoice-container">
+            <div class="invoice-label">Invoice Number</div>
+            <div class="invoice-number">{{invoiceNo}}</div>
+            <div style="margin-top: 15px;">
+              <span class="status-badge">{{status}}</span>
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <div class="amount-label">Total Amount Due</div>
+            <div class="amount-value">{{currency}} {{totalAmount}}</div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Billing Period:</span>
+              <span class="detail-value">{{billingPeriod}}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Number of Orders:</span>
+              <span class="detail-value">{{orderCount}}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Subtotal:</span>
+              <span class="detail-value">{{currency}} {{subtotal}}</span>
+            </div>
+            {{#if taxAmount}}
+            <div class="detail-row">
+              <span class="detail-label">Tax ({{taxRate}}%):</span>
+              <span class="detail-value">{{currency}} {{taxAmount}}</span>
+            </div>
+            {{/if}}
+            <div class="detail-row">
+              <span class="detail-label">Invoice Date:</span>
+              <span class="detail-value">{{createdAt}}</span>
+            </div>
+          </div>
+
+          {{#if notes}}
+          <div class="info-box">
+            <p><strong>Admin Note:</strong> {{notes}}</p>
+          </div>
+          {{/if}}
+
+          <div class="info-box">
+            <p><strong>📎 Invoice PDF Attached</strong></p>
+            <p>A detailed PDF invoice is attached to this email for your records.</p>
+            <p>You can also download the invoice from your portal account at any time.</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{portalUrl}}/invoices" class="cta-button">View in Portal</a>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p><strong>TP Portal</strong></p>
+          <p>Your trusted partner for digitizing, vector & patches</p>
+          <p style="margin-top: 15px;">Need help? Contact us anytime</p>
+          <p style="margin-top: 10px; font-size: 12px; color: #999999;">
+            This is an automated email. Please do not reply to this message.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return Handlebars.compile(template);
+};
+
+/**
+ * Send invoice created notification with PDF attachment
+ */
+export const sendInvoiceCreatedNotification = async (
+  invoice: any,
+  user: { name: string; email: string },
+  pdfBuffer: Buffer
+): Promise<void> => {
+  try {
+    const template = getInvoiceCreatedTemplate();
+    const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+
+    const html = template({
+      name: user.name,
+      invoiceNo: invoice.invoice_no,
+      billingPeriod: invoice.billing_period,
+      status: invoice.status,
+      subtotal: parseFloat(invoice.subtotal).toFixed(2),
+      taxRate: parseFloat(invoice.tax_rate || 0).toFixed(2),
+      taxAmount: parseFloat(invoice.tax_amount || 0).toFixed(2),
+      totalAmount: parseFloat(invoice.total_amount).toFixed(2),
+      currency: invoice.currency || 'USD',
+      orderCount: invoice.items?.length || 0,
+      notes: invoice.notes,
+      createdAt: new Date(invoice.created_at).toLocaleDateString(),
+      portalUrl,
+    });
+
+    const textContent = `
+Hello ${user.name},
+
+New Invoice - ${invoice.invoice_no}
+
+Your invoice for ${invoice.billing_period} has been generated and is ready for your review.
+
+Invoice Number: ${invoice.invoice_no}
+Billing Period: ${invoice.billing_period}
+Status: ${invoice.status}
+
+Amount Breakdown:
+- Subtotal: ${invoice.currency || 'USD'} ${parseFloat(invoice.subtotal).toFixed(2)}
+${parseFloat(invoice.tax_amount || 0) > 0 ? `- Tax (${parseFloat(invoice.tax_rate || 0).toFixed(2)}%): ${invoice.currency || 'USD'} ${parseFloat(invoice.tax_amount || 0).toFixed(2)}\n` : ''}- Total Amount Due: ${invoice.currency || 'USD'} ${parseFloat(invoice.total_amount).toFixed(2)}
+
+Number of Orders: ${invoice.items?.length || 0}
+Invoice Date: ${new Date(invoice.created_at).toLocaleDateString()}
+
+${invoice.notes ? `Admin Note: ${invoice.notes}\n` : ''}
+A detailed PDF invoice is attached to this email for your records.
+You can also view and download the invoice from your portal account: ${portalUrl}/invoices
+
+Best regards,
+TP Portal Team
+    `.trim();
+
+    await sendEmail({
+      to: user.email,
+      subject: `New Invoice - ${invoice.invoice_no}`,
+      html,
+      text: textContent,
+      attachments: [
+        {
+          filename: `${invoice.invoice_no}.pdf`,
+          content: pdfBuffer,
+        },
+      ],
+    });
+
+    console.log(`✓ Invoice created notification sent to ${user.email} with PDF attachment`);
+  } catch (error: any) {
+    console.error('✗ Failed to send invoice created notification:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Invoice Paid Email Template
+ */
+const getInvoicePaidTemplate = (): HandlebarsTemplateDelegate => {
+  const template = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Payment Confirmed - TP Portal</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
+        .email-container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .email-header { background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); padding: 40px 30px; text-align: center; }
+        .email-header h1 { color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .email-header p { color: #e8f5e9; font-size: 16px; }
+        .email-body { padding: 40px 30px; }
+        .greeting { font-size: 18px; color: #333333; margin-bottom: 20px; }
+        .message { font-size: 15px; color: #666666; margin-bottom: 30px; line-height: 1.8; }
+        .success-box { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-left: 4px solid #4caf50; border-radius: 6px; padding: 25px; margin: 25px 0; text-align: center; }
+        .success-box h2 { color: #2e7d32; font-size: 24px; margin-bottom: 10px; }
+        .success-box p { color: #666666; font-size: 15px; }
+        .invoice-container { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0; }
+        .invoice-label { font-size: 14px; color: #666666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .invoice-number { font-size: 36px; font-weight: 700; color: #667eea; margin: 10px 0; font-family: 'Courier New', monospace; }
+        .paid-badge { display: inline-block; background-color: #4caf50; color: #ffffff; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; text-transform: uppercase; margin: 10px 0; }
+        .amount-box { background-color: #f8f9fa; border-radius: 6px; padding: 25px; margin: 25px 0; text-align: center; }
+        .amount-label { font-size: 14px; color: #666666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .amount-value { font-size: 36px; font-weight: 700; color: #2e7d32; margin: 5px 0; }
+        .detail-section { background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-weight: 600; color: #333333; flex: 0 0 50%; }
+        .detail-value { color: #666666; flex: 1; text-align: right; }
+        .info-box { background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; margin: 25px 0; border-radius: 4px; }
+        .info-box p { font-size: 14px; color: #2e7d32; margin: 5px 0; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); color: #ffffff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 20px 0; }
+        .footer { background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e9ecef; }
+        .footer p { font-size: 13px; color: #6c757d; margin: 5px 0; }
+        @media only screen and (max-width: 600px) {
+          .email-container { margin: 20px; }
+          .email-header { padding: 30px 20px; }
+          .email-body { padding: 30px 20px; }
+          .invoice-number { font-size: 28px; }
+          .amount-value { font-size: 28px; }
+          .detail-row { flex-direction: column; }
+          .detail-value { text-align: left; margin-top: 5px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-container">
+        <div class="email-header">
+          <h1>TP Portal</h1>
+          <p>Payment Confirmed</p>
+        </div>
+
+        <div class="email-body">
+          <div class="greeting">Hello {{name}},</div>
+
+          <div class="success-box">
+            <h2>✓ Payment Confirmed!</h2>
+            <p>Thank you! Your payment has been successfully received and processed.</p>
+          </div>
+
+          <div class="invoice-container">
+            <div class="invoice-label">Invoice Number</div>
+            <div class="invoice-number">{{invoiceNo}}</div>
+            <div style="margin-top: 15px;">
+              <span class="paid-badge">🔒 PAID</span>
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <div class="amount-label">Amount Paid</div>
+            <div class="amount-value">{{currency}} {{totalAmount}}</div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-row">
+              <span class="detail-label">Billing Period:</span>
+              <span class="detail-value">{{billingPeriod}}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Payment Date:</span>
+              <span class="detail-value">{{paidAt}}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Invoice Date:</span>
+              <span class="detail-value">{{createdAt}}</span>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <p><strong>📥 Your Invoice:</strong></p>
+            <p>Your paid invoice is available for download in your portal account.</p>
+            <p>This invoice has been locked and cannot be modified.</p>
+          </div>
+
+          <div class="message" style="margin-top: 30px;">
+            Thank you for your continued partnership with TP Portal! We appreciate your business and look forward to serving you again.
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="{{portalUrl}}/invoices" class="cta-button">Download Invoice</a>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p><strong>TP Portal</strong></p>
+          <p>Your trusted partner for digitizing, vector & patches</p>
+          <p style="margin-top: 15px;">Need help? Contact us anytime</p>
+          <p style="margin-top: 10px; font-size: 12px; color: #999999;">
+            This is an automated email. Please do not reply to this message.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return Handlebars.compile(template);
+};
+
+/**
+ * Send invoice paid notification
+ */
+export const sendInvoicePaidNotification = async (
+  invoice: any,
+  user: { name: string; email: string }
+): Promise<void> => {
+  try {
+    const template = getInvoicePaidTemplate();
+    const portalUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+
+    const html = template({
+      name: user.name,
+      invoiceNo: invoice.invoice_no,
+      billingPeriod: invoice.billing_period,
+      totalAmount: parseFloat(invoice.total_amount).toFixed(2),
+      currency: invoice.currency || 'USD',
+      paidAt: new Date(invoice.paid_at).toLocaleDateString(),
+      createdAt: new Date(invoice.created_at).toLocaleDateString(),
+      portalUrl,
+    });
+
+    const textContent = `
+Hello ${user.name},
+
+Payment Confirmed! ✓
+
+Thank you! Your payment has been successfully received and processed.
+
+Invoice Number: ${invoice.invoice_no}
+Status: PAID 🔒
+
+Amount Paid: ${invoice.currency || 'USD'} ${parseFloat(invoice.total_amount).toFixed(2)}
+
+Billing Period: ${invoice.billing_period}
+Payment Date: ${new Date(invoice.paid_at).toLocaleDateString()}
+Invoice Date: ${new Date(invoice.created_at).toLocaleDateString()}
+
+Your paid invoice is available for download in your portal account.
+This invoice has been locked and cannot be modified.
+
+Download your invoice: ${portalUrl}/invoices
+
+Thank you for your continued partnership with TP Portal! We appreciate your business and look forward to serving you again.
+
+Best regards,
+TP Portal Team
+    `.trim();
+
+    await sendEmail({
+      to: user.email,
+      subject: `Payment Confirmed - ${invoice.invoice_no}`,
+      html,
+      text: textContent,
+    });
+
+    console.log(`✓ Invoice paid notification sent to ${user.email}`);
+  } catch (error: any) {
+    console.error('✗ Failed to send invoice paid notification:', error.message);
     throw error;
   }
 };

@@ -20,6 +20,8 @@ import QuotesList from '../pages/user/QuotesList';
 import QuoteCreate from '../pages/user/QuoteCreate';
 import QuoteDetails from '../pages/user/QuoteDetails';
 import QuoteEdit from '../pages/user/QuoteEdit';
+import InvoicesList from '../pages/user/InvoicesList';
+import InvoiceDetails from '../pages/user/InvoiceDetails';
 import Profile from '../pages/user/Profile';
 
 // Admin Pages
@@ -29,6 +31,9 @@ import AdminOrderDetails from '../pages/admin/AdminOrderDetails';
 import AdminQuotes from '../pages/admin/AdminQuotes';
 import AdminQuoteDetails from '../pages/admin/AdminQuoteDetails';
 import AdminQuoteEdit from '../pages/admin/AdminQuoteEdit';
+import AdminInvoices from '../pages/admin/AdminInvoices';
+import AdminInvoiceCreate from '../pages/admin/AdminInvoiceCreate';
+import AdminInvoiceDetails from '../pages/admin/AdminInvoiceDetails';
 import AdminUsers from '../pages/admin/AdminUsers';
 
 // Protected Route Component
@@ -197,6 +202,30 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/invoices"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['USER']}>
+              <AppLayout>
+                <InvoicesList />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/invoices/:id"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['USER']}>
+              <AppLayout>
+                <InvoiceDetails />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/profile"
         element={
           <RequireAuth>
@@ -277,6 +306,42 @@ const AppRoutes = () => {
             <RequireRole allowedRoles={['ADMIN']}>
               <AppLayout>
                 <AdminQuoteEdit />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/invoices"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['ADMIN']}>
+              <AppLayout>
+                <AdminInvoices />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/invoices/create"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['ADMIN']}>
+              <AppLayout>
+                <AdminInvoiceCreate />
+              </AppLayout>
+            </RequireRole>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/invoices/:id"
+        element={
+          <RequireAuth>
+            <RequireRole allowedRoles={['ADMIN']}>
+              <AppLayout>
+                <AdminInvoiceDetails />
               </AppLayout>
             </RequireRole>
           </RequireAuth>
