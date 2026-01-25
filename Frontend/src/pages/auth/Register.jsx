@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, TextField, Button, Typography, Link, Stack, IconButton, InputAdornment } from '@mui/material';
+import { Box, Card, CardContent, TextField, Button, Typography, Link, Stack, IconButton, InputAdornment, Divider } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { signupUser } from '../../redux/actions/AuthAction';
+import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -183,6 +184,9 @@ const Register = () => {
             >
               {loading ? 'Registering...' : 'Register'}
             </Button>
+
+            <Divider sx={{ my: 0.5 }}>or</Divider>
+            <GoogleSignInButton mode="signup" />
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">

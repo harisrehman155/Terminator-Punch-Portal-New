@@ -10,6 +10,7 @@ import {
   ConflictError,
   NotFoundError,
 } from '../utils/errors';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * Auth Service - Business logic for authentication
@@ -90,6 +91,101 @@ export const login = async (email: string, password: string) => {
   });
 
   // Return user data and token
+  return {
+    user: UserModel.toUserResponse(user),
+    token,
+  };
+};
+
+/**
+ * Login or register user with Google
+ */
+export const loginWithGoogle = async (credential: string) => {
+  if (!credential) {
+    throw new BadRequestError('Google credential is required');
+  }
+
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!googleClientId) {
+    throw new BadRequestError('Google client ID is not configured');
+  }
+
+  const googleClient = new OAuth2Client(googleClientId);
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+  } catch (error) {
+    throw new UnauthorizedError('Invalid Google token');
+  }
+
+  const payload = ticket.getPayload();
+  if (!payload) {
+    throw new UnauthorizedError('Invalid Google token');
+  }
+
+  const email = payload.email?.toLowerCase().trim();
+  const googleSub = payload.sub;
+
+  if (!email) {
+    throw new UnauthorizedError('Google account email is required');
+  }
+
+  if (!googleSub) {
+    throw new UnauthorizedError('Google account subject is required');
+  }
+
+  if (!payload.email_verified) {
+    throw new UnauthorizedError('Google email is not verified');
+  }
+
+  let user = await UserModel.findByGoogleSub(googleSub);
+
+  if (!user) {
+    const existingUser = await UserModel.findByEmail(email);
+
+    if (existingUser) {
+      if (!existingUser.is_active) {
+        throw new UnauthorizedError('Account is deactivated. Please contact support.');
+      }
+
+      if (existingUser.google_sub && existingUser.google_sub !== googleSub) {
+        throw new UnauthorizedError('Account already linked to another Google profile');
+      }
+
+      await UserModel.linkGoogleAccount(
+        existingUser.id,
+        googleSub,
+        payload.picture || null
+      );
+      user = await UserModel.findById(existingUser.id);
+    } else {
+      const displayName = payload.name || email.split('@')[0];
+      user = await UserModel.createOAuthUser({
+        name: displayName,
+        email,
+        google_sub: googleSub,
+        avatar_url: payload.picture || null,
+      });
+    }
+  }
+
+  if (!user) {
+    throw new UnauthorizedError('Unable to sign in with Google');
+  }
+
+  if (!user.is_active) {
+    throw new UnauthorizedError('Account is deactivated. Please contact support.');
+  }
+
+  const token = generateToken({
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+  });
+
   return {
     user: UserModel.toUserResponse(user),
     token,

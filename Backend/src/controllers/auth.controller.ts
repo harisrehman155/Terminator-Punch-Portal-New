@@ -88,6 +88,23 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * Login user with Google
+ * POST /api/auth/google
+ */
+export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
+  const credential = req.body.credential || req.body.idToken;
+
+  if (!credential) {
+    throw new ValidationError('Validation failed', {
+      credential: 'Google credential is required',
+    });
+  }
+
+  const result = await AuthService.loginWithGoogle(credential);
+  return successResponse(res, 'Login successful', result);
+});
+
+/**
  * Forgot password - Send OTP
  * POST /api/auth/forgot-password
  */

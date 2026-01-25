@@ -4,6 +4,7 @@
 
 // Role enum type (kept for API compatibility)
 export type UserRole = 'USER' | 'ADMIN';
+export type AuthProvider = 'local' | 'google';
 
 /**
  * User database model (with FK columns)
@@ -15,6 +16,9 @@ export interface User {
   name: string;
   email: string;
   password_hash: string;
+  auth_provider?: AuthProvider;
+  google_sub?: string | null;
+  avatar_url?: string | null;
   company?: string;
   phone?: string;
   address?: string;
@@ -44,6 +48,13 @@ export interface UserCreateInput {
   country?: string;
 }
 
+export interface OAuthUserCreateInput {
+  name: string;
+  email: string;
+  google_sub: string;
+  avatar_url?: string | null;
+}
+
 export interface UserUpdateInput {
   name?: string;
   company?: string;
@@ -60,6 +71,7 @@ export interface UserResponse {
   id: number;
   name: string;
   email: string;
+  avatar_url?: string | null;
   company?: string;
   phone?: string;
   address?: string;

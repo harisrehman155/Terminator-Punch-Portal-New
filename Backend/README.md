@@ -161,6 +161,7 @@ Required variables:
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - `JWT_SECRET`
 - `SMTP_*` (for emails)
+- `GOOGLE_CLIENT_ID` (for Google sign-in)
 
 ## Development Workflow
 

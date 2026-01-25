@@ -205,6 +205,9 @@ CREATE TABLE `users` (
   `name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
+  `auth_provider` varchar(20) NOT NULL DEFAULT 'local',
+  `google_sub` varchar(255) DEFAULT NULL,
+  `avatar_url` varchar(500) DEFAULT NULL,
   `company` varchar(150) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
@@ -317,6 +320,7 @@ ALTER TABLE `quotes`
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `uniq_google_sub` (`google_sub`),
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_role_id` (`role_id`),
   ADD KEY `idx_is_active` (`is_active`);
