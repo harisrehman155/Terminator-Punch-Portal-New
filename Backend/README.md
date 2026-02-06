@@ -162,6 +162,7 @@ Required variables:
 - `JWT_SECRET`
 - `SMTP_*` (for emails)
 - `GOOGLE_CLIENT_ID` (for Google sign-in)
+- `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` (for PayPal payments)
 
 ## Development Workflow
 

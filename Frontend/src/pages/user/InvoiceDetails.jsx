@@ -24,6 +24,7 @@ import PageHeader from '../../components/common/PageHeader';
 import StatusChip from '../../components/common/StatusChip';
 import apiService, { HttpMethod } from '../../api/ApiService';
 import { API_BASE_URL } from '../../utils/Constants';
+import PayPalInvoiceButton from '../../components/payments/PayPalInvoiceButton';
 
 const InvoiceDetails = () => {
   const { id } = useParams();
@@ -325,6 +326,24 @@ const InvoiceDetails = () => {
             </Stack>
           </Box>
         </Paper>
+
+        {/* Payment */}
+        {invoice.status === 'UNPAID' && (
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Pay Invoice
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You will be charged {formatCurrency(invoice.total_amount, invoice.currency)} via PayPal.
+            </Typography>
+            <PayPalInvoiceButton
+              invoiceId={invoice.id}
+              currency={invoice.currency || 'USD'}
+              onPaid={(paidInvoice) => setInvoice(paidInvoice)}
+            />
+          </Paper>
+        )}
 
         {/* Notes */}
         {invoice.notes && (
