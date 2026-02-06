@@ -8,6 +8,11 @@ package-lock.json
 .env.development.local
 .env.test.local
 .env.production.local
+Backend/.env
+Backend/.env.*
+!Backend/.env.example
+Frontend/.env
+Frontend/.env.*
 
 # IDE and Editor files
 .vscode/
@@ -19,6 +24,7 @@ package-lock.json
 
 # Claude AI
 .claude/
+.codex/
 
 # Build outputs
 dist/
@@ -36,7 +42,10 @@ coverage/
 # Uploads and temporary files
 uploads/*
 !uploads/.gitkeep
+Backend/uploads/*
+!Backend/uploads/.gitkeep
 Backend/invoices/
+Frontend/dist/
 temp/
 tmp/
 
