@@ -107,6 +107,53 @@ export const loginUser = (email, password) => {
     };
 };
 
+export const loginWithGoogle = (credential) => {
+    return async (dispatch) => {
+        try {
+            dispatch(setAuthLoading(true));
+            dispatch(setAuthError(null));
+
+            const response = await apiService({
+                method: HttpMethod.POST,
+                endPoint: "/auth/google",
+                data: { credential }
+            });
+
+            if (response.status === 'success') {
+                dispatch(login(response.data.user, response.data.token));
+                return { success: true, data: response.data };
+            } else {
+                dispatch(setAuthError(response.message));
+                return { success: false, message: response.message };
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+
+            if (error.response && error.response.data) {
+                const responseData = error.response.data;
+
+                if (responseData.status === 'error') {
+                    dispatch(setAuthError(responseData.message || "Google login failed"));
+                    return { success: false, message: responseData.message || "Google login failed" };
+                } else if (responseData.error) {
+                    const backendError = responseData.error;
+                    dispatch(setAuthError(backendError.message || "Google login failed"));
+                    return { success: false, message: backendError.message || "Google login failed" };
+                } else {
+                    dispatch(setAuthError(responseData.message || "Google login failed"));
+                    return { success: false, message: responseData.message || "Google login failed" };
+                }
+            } else {
+                const errorMessage = "Google login failed. Please try again.";
+                dispatch(setAuthError(errorMessage));
+                return { success: false, message: errorMessage };
+            }
+        } finally {
+            dispatch(setAuthLoading(false));
+        }
+    };
+};
+
 export const signupUser = (name, email, password, confirmPassword) => {
     return async (dispatch) => {
         try {

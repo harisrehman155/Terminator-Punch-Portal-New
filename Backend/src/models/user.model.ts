@@ -1,5 +1,5 @@
 import { query, queryOne } from '../config/database';
-import { User, UserCreateInput, UserUpdateInput, UserResponse } from '../types/user.types';
+import { User, UserCreateInput, UserUpdateInput, UserResponse, OAuthUserCreateInput } from '../types/user.types';
 import { hashPassword } from '../utils/password';
 import { DatabaseError, NotFoundError } from '../utils/errors';
 import { getLookupId } from '../utils/lookup.helper';
@@ -62,8 +62,8 @@ export const create = async (userData: UserCreateInput, isActive: boolean = fals
     }
 
     const result: any = await query(
-      `INSERT INTO users (name, email, password_hash, company, phone, address, city, country, role_id, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (name, email, password_hash, company, phone, address, city, country, role_id, is_active, auth_provider)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userData.name,
         userData.email,
@@ -75,6 +75,7 @@ export const create = async (userData: UserCreateInput, isActive: boolean = fals
         userData.country || null,
         roleId,
         isActive ? 1 : 0,
+        'local',
       ]
     );
 
@@ -91,6 +92,94 @@ export const create = async (userData: UserCreateInput, isActive: boolean = fals
       throw new DatabaseError('Email already exists');
     }
     throw new DatabaseError('Failed to create user');
+  }
+};
+
+/**
+ * Create new OAuth user
+ */
+export const createOAuthUser = async (
+  userData: OAuthUserCreateInput
+): Promise<User> => {
+  try {
+    const randomPassword = await hashPassword(`${userData.google_sub}-${Date.now()}`);
+
+    const roleId = await getLookupId('user_role', 'USER');
+    if (!roleId) {
+      throw new DatabaseError('USER role not found in lookup table');
+    }
+
+    const result: any = await query(
+      `INSERT INTO users (name, email, password_hash, role_id, is_active, auth_provider, google_sub, avatar_url, email_verified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        userData.name,
+        userData.email,
+        randomPassword,
+        roleId,
+        1,
+        'google',
+        userData.google_sub,
+        userData.avatar_url || null,
+      ]
+    );
+
+    const userId = result.insertId;
+    const user = await findById(userId);
+    if (!user) {
+      throw new DatabaseError('Failed to retrieve created user');
+    }
+
+    return user;
+  } catch (error: any) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new DatabaseError('Email already exists');
+    }
+    throw new DatabaseError('Failed to create OAuth user');
+  }
+};
+
+/**
+ * Find user by Google subject
+ */
+export const findByGoogleSub = async (googleSub: string): Promise<User | null> => {
+  try {
+    const user = await queryOne<User>(
+      `SELECT
+        u.*,
+        l.lookup_value as role
+      FROM users u
+      LEFT JOIN lookups l ON u.role_id = l.id
+      WHERE u.google_sub = ?`,
+      [googleSub]
+    );
+    return user;
+  } catch (error) {
+    throw new DatabaseError('Failed to find user by Google subject');
+  }
+};
+
+/**
+ * Link Google account to existing user
+ */
+export const linkGoogleAccount = async (
+  userId: number,
+  googleSub: string,
+  avatarUrl?: string | null
+): Promise<void> => {
+  try {
+    await query(
+      `UPDATE users
+       SET auth_provider = 'google',
+           google_sub = ?,
+           avatar_url = ?,
+           email_verified_at = COALESCE(email_verified_at, NOW()),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [googleSub, avatarUrl || null, userId]
+    );
+  } catch (error) {
+    throw new DatabaseError('Failed to link Google account');
   }
 };
 
@@ -329,6 +418,7 @@ export const toUserResponse = (user: User): UserResponse => {
     id: user.id,
     name: user.name,
     email: user.email,
+    avatar_url: user.avatar_url || null,
     company: user.company,
     phone: user.phone,
     address: user.address,

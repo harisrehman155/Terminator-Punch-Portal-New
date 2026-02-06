@@ -128,6 +128,8 @@ Tests live under `tests/{unit,integration,e2e}`. Add or configure your preferred
 
 Required variables:
 - `VITE_API_BASE_URL`
+- `VITE_GOOGLE_CLIENT_ID` (for Google sign-in)
+- `VITE_PAYPAL_CLIENT_ID` (for PayPal payments)
 
 ## Development Workflow
 

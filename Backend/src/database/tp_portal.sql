@@ -135,6 +135,27 @@ CREATE TABLE `invoices` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `payments`
+--
+
+CREATE TABLE `payments` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `invoice_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `provider` varchar(50) NOT NULL,
+  `provider_order_id` varchar(255) NOT NULL,
+  `provider_capture_id` varchar(255) DEFAULT NULL,
+  `status` varchar(50) NOT NULL,
+  `amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `currency` varchar(3) NOT NULL DEFAULT 'USD',
+  `raw_response` longtext DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `invoice_items`
 --
 
@@ -205,6 +226,9 @@ CREATE TABLE `users` (
   `name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
+  `auth_provider` varchar(20) NOT NULL DEFAULT 'local',
+  `google_sub` varchar(255) DEFAULT NULL,
+  `avatar_url` varchar(500) DEFAULT NULL,
   `company` varchar(150) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
@@ -280,6 +304,16 @@ ALTER TABLE `invoices`
   ADD KEY `idx_created_at` (`created_at`);
 
 --
+-- Indexes for table `payments`
+--
+ALTER TABLE `payments`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_provider_order` (`provider_order_id`),
+  ADD KEY `idx_invoice_id` (`invoice_id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_status` (`status`);
+
+--
 -- Indexes for table `invoice_items`
 --
 ALTER TABLE `invoice_items`
@@ -317,6 +351,7 @@ ALTER TABLE `quotes`
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `uniq_google_sub` (`google_sub`),
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_role_id` (`role_id`),
   ADD KEY `idx_is_active` (`is_active`);
@@ -353,6 +388,12 @@ ALTER TABLE `orders`
 -- AUTO_INCREMENT for table `invoices`
 --
 ALTER TABLE `invoices`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payments`
+--
+ALTER TABLE `payments`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -413,6 +454,13 @@ ALTER TABLE `invoices`
   ADD CONSTRAINT `invoices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`status_id`) REFERENCES `lookups` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `invoices_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `payments`
+--
+ALTER TABLE `payments`
+  ADD CONSTRAINT `payments_ibfk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `payments_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `invoice_items`

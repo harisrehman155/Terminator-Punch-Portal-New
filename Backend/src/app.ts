@@ -13,6 +13,7 @@ import quoteRoutes from './routes/quote.routes';
 import adminRoutes from './routes/admin.routes';
 import fileRoutes from './routes/file.routes';
 import invoiceRoutes from './routes/invoice.routes';
+import paymentRoutes from './routes/payment.routes';
 // import userRoutes from './routes/user.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
@@ -66,6 +67,7 @@ app.use('/api/quotes', quoteRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api', invoiceRoutes);
+app.use('/api/payments', paymentRoutes);
 // app.use('/api/user', userRoutes);
 
 // 404 handler
